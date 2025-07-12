@@ -53,86 +53,94 @@ typedef struct {
 } Game;
 
 Vector2 *GenerateOutline(Image image, int *point_count) {
-    *point_count = 0;
-    Color *pixels = LoadImageColors(image);
-    if (!pixels) return NULL;
+  *point_count = 0;
+  Color *pixels = LoadImageColors(image);
+  if (!pixels)
+    return NULL;
 
-    int width = image.width;
-    int height = image.height;
-    Vector2 *points = (Vector2 *)malloc(sizeof(Vector2) * width * height);
-    if (!points) {
-        UnloadImageColors(pixels);
-        return NULL;
-    }
-
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            if (pixels[y * width + x].a > 0) { // Is pixel not transparent?
-                // Check neighbors
-                bool is_edge = false;
-                if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
-                    is_edge = true;
-                } else {
-                    if (pixels[y * width + (x - 1)].a == 0 || // left
-                        pixels[y * width + (x + 1)].a == 0 || // right
-                        pixels[(y - 1) * width + x].a == 0 || // top
-                        pixels[(y + 1) * width + x].a == 0) {  // bottom
-                        is_edge = true;
-                    }
-                }
-
-                if (is_edge) {
-                    points[(*point_count)++] = (Vector2){(float)x, (float)y};
-                }
-            }
-        }
-    }
-
+  int width = image.width;
+  int height = image.height;
+  Vector2 *points = (Vector2 *)malloc(sizeof(Vector2) * width * height);
+  if (!points) {
     UnloadImageColors(pixels);
-    return points;
+    return NULL;
+  }
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      if (pixels[y * width + x].a > 0) { // Is pixel not transparent?
+        // Check neighbors
+        bool is_edge = false;
+        if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
+          is_edge = true;
+        } else {
+          if (pixels[y * width + (x - 1)].a == 0 || // left
+              pixels[y * width + (x + 1)].a == 0 || // right
+              pixels[(y - 1) * width + x].a == 0 || // top
+              pixels[(y + 1) * width + x].a == 0) { // bottom
+            is_edge = true;
+          }
+        }
+
+        if (is_edge) {
+          points[(*point_count)++] = (Vector2){(float)x, (float)y};
+        }
+      }
+    }
+  }
+
+  UnloadImageColors(pixels);
+  return points;
 }
 
 Rectangle GetCarBoundingBox(const Car *car) {
-    float radians = PI * (car->angle - 90) / 180;
-    float cos_a = cosf(radians);
-    float sin_a = sinf(radians);
+  float radians = PI * (car->angle - 90) / 180;
+  float cos_a = cosf(radians);
+  float sin_a = sinf(radians);
 
-    float half_width = car->width / 2.0f;
-    float half_length = car->length / 2.0f;
+  float half_width = car->width / 2.0f;
+  float half_length = car->length / 2.0f;
 
-    Vector2 corners[4];
-    corners[0] = (Vector2){car->x - half_width * sin_a - half_length * cos_a, car->y + half_width * cos_a - half_length * sin_a};
-    corners[1] = (Vector2){car->x + half_width * sin_a - half_length * cos_a, car->y - half_width * cos_a - half_length * sin_a};
-    corners[2] = (Vector2){car->x + half_width * sin_a + half_length * cos_a, car->y - half_width * cos_a + half_length * sin_a};
-    corners[3] = (Vector2){car->x - half_width * sin_a + half_length * cos_a, car->y + half_width * cos_a + half_length * sin_a};
+  Vector2 corners[4];
+  corners[0] = (Vector2){car->x - half_width * sin_a - half_length * cos_a,
+                         car->y + half_width * cos_a - half_length * sin_a};
+  corners[1] = (Vector2){car->x + half_width * sin_a - half_length * cos_a,
+                         car->y - half_width * cos_a - half_length * sin_a};
+  corners[2] = (Vector2){car->x + half_width * sin_a + half_length * cos_a,
+                         car->y - half_width * cos_a + half_length * sin_a};
+  corners[3] = (Vector2){car->x - half_width * sin_a + half_length * cos_a,
+                         car->y + half_width * cos_a + half_length * sin_a};
 
-    float min_x = corners[0].x, max_x = corners[0].x;
-    float min_y = corners[0].y, max_y = corners[0].y;
+  float min_x = corners[0].x, max_x = corners[0].x;
+  float min_y = corners[0].y, max_y = corners[0].y;
 
-    for (int i = 1; i < 4; i++) {
-        if (corners[i].x < min_x) min_x = corners[i].x;
-        if (corners[i].x > max_x) max_x = corners[i].x;
-        if (corners[i].y < min_y) min_y = corners[i].y;
-        if (corners[i].y > max_y) max_y = corners[i].y;
-    }
+  for (int i = 1; i < 4; i++) {
+    if (corners[i].x < min_x)
+      min_x = corners[i].x;
+    if (corners[i].x > max_x)
+      max_x = corners[i].x;
+    if (corners[i].y < min_y)
+      min_y = corners[i].y;
+    if (corners[i].y > max_y)
+      max_y = corners[i].y;
+  }
 
-    return (Rectangle){min_x, min_y, max_x - min_x, max_y - min_y};
+  return (Rectangle){min_x, min_y, max_x - min_x, max_y - min_y};
 }
 
-bool CheckCollision(const Car *car, const Vector2 *bush_outline, int point_count, float bush_x, float bush_y) {
-    Rectangle car_box = GetCarBoundingBox(car);
+bool CheckCollision(const Car *car, const Vector2 *bush_outline,
+                    int point_count, float bush_x, float bush_y) {
+  Rectangle car_box = GetCarBoundingBox(car);
 
-    for (int i = 0; i < point_count; i++) {
-        Vector2 point = {bush_x + bush_outline[i].x, bush_y + bush_outline[i].y};
-        if (CheckCollisionPointRec(point, car_box)) {
-            return true;
-        }
+  for (int i = 0; i < point_count; i++) {
+    Vector2 point = {bush_x + bush_outline[i].x, bush_y + bush_outline[i].y};
+    if (CheckCollisionPointRec(point, car_box)) {
+      return true;
     }
+  }
 
-    return false;
+  return false;
 }
-
-
 
 void DrawWorld(Game *game) {
   int tile_size_x = game->soil_texture.width;
@@ -172,22 +180,28 @@ void DrawWorld(Game *game) {
         float bush_y = (float)y * tile_size_y + (rand() % tile_size_y);
         DrawTexture(game->bush_texture, bush_x, bush_y, WHITE);
 
-        bool collided = CheckCollision(&game->car, game->bush_outline_points, game->bush_outline_point_count, bush_x, bush_y);
+        bool collided =
+            CheckCollision(&game->car, game->bush_outline_points,
+                           game->bush_outline_point_count, bush_x, bush_y);
         if (collided) {
-            float bounce_speed = (game->car.speed > 0) ? -CAR_MAX_SPEED / 4 : CAR_MAX_SPEED / 4;
-            game->car.speed = bounce_speed;
+          float bounce_speed =
+              (game->car.speed > 0) ? -CAR_MAX_SPEED / 4 : CAR_MAX_SPEED / 4;
+          game->car.speed = bounce_speed;
 
-            float radians = PI * (game->car.angle - 90) / 180;
-            float move_back_distance = (game->car.speed > 0) ? -2.0f : 2.0f;
-            game->car.x += move_back_distance * cosf(radians);
-            game->car.y += move_back_distance * sinf(radians);
+          float radians = PI * (game->car.angle - 90) / 180;
+          float move_back_distance = (game->car.speed > 0) ? -2.0f : 2.0f;
+          game->car.x += move_back_distance * cosf(radians);
+          game->car.y += move_back_distance * sinf(radians);
         }
 
         Color outline_color = collided ? BLUE : RED;
         for (int i = 0; i < game->bush_outline_point_count; i++) {
-            Vector2 p1 = game->bush_outline_points[i];
-            Vector2 p2 = game->bush_outline_points[(i + 1) % game->bush_outline_point_count];
-            DrawLine(bush_x + p1.x, bush_y + p1.y, bush_x + p2.x, bush_y + p2.y, outline_color);
+          Vector2 p1 = game->bush_outline_points[i];
+          Vector2 p2 =
+              game->bush_outline_points[(i + 1) %
+                                        game->bush_outline_point_count];
+          DrawLine(bush_x + p1.x, bush_y + p1.y, bush_x + p2.x, bush_y + p2.y,
+                   outline_color);
         }
       }
     }
@@ -305,7 +319,8 @@ int main() {
   Image bush_image = LoadImage(
       "assets/craftpix-889156-free-racing-game-kit/PNG/Decor/Bush.png");
   game.bush_texture = LoadTextureFromImage(bush_image);
-  game.bush_outline_points = GenerateOutline(bush_image, &game.bush_outline_point_count);
+  game.bush_outline_points =
+      GenerateOutline(bush_image, &game.bush_outline_point_count);
   UnloadImage(bush_image);
 
   Image car_image = LoadImage("assets/craftpix-889156-free-racing-game-kit/PNG/"
