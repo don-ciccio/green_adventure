@@ -38,6 +38,10 @@ typedef struct {
   int width, length;
   Texture2D texture;
   Rectangle texture_rec;
+  Texture2D weapon_texture;
+  Rectangle weapon_texture_rec;
+  Texture2D track_texture;
+  Rectangle track_texture_rec;
 } Car;
 
 typedef struct {
@@ -289,8 +293,38 @@ void UpdateAndDrawParticles(float dt, Game *game) {
 void DrawCar(const Car *car) {
   Rectangle car_rec = {car->x, car->y, (float)car->width, (float)car->length};
   Vector2 car_origin = {(float)car->width / 2, (float)car->length / 2};
+
+  // Draw tracks
+  float track_width_scale = 0.2f; // Make tracks 40% of car width
+  float track_width = (float)car->width * track_width_scale;
+  float track_offset_x = car->width * 0.28f;
+
+  // Left Track
+  Rectangle left_track_rec = {car->x, car->y, track_width, (float)car->length};
+  Vector2 left_track_origin = {track_width / 2.0f + track_offset_x,
+                               (float)car->length / 2.0f};
+  DrawTexturePro(car->track_texture, car->track_texture_rec, left_track_rec,
+                 left_track_origin, car->angle, WHITE);
+
+  // Right Track
+  Rectangle right_track_rec = {car->x, car->y, track_width, (float)car->length};
+  Vector2 right_track_origin = {track_width / 2.0f - track_offset_x,
+                                (float)car->length / 2.0f};
+  DrawTexturePro(car->track_texture, car->track_texture_rec, right_track_rec,
+                 right_track_origin, car->angle, WHITE);
+
   DrawTexturePro(car->texture, car->texture_rec, car_rec, car_origin,
                  car->angle, WHITE);
+
+  // Draw weapon with adjusted width
+  float weapon_width_scale = 0.5f;
+  Rectangle weapon_rec = {car->x, car->y,
+                          (float)car->width * weapon_width_scale,
+                          (float)car->length};
+  Vector2 weapon_origin = {weapon_rec.width / 2.0f, weapon_rec.height / 2.0f};
+
+  DrawTexturePro(car->weapon_texture, car->weapon_texture_rec, weapon_rec,
+                 weapon_origin, car->angle, WHITE);
 }
 
 int main() {
@@ -313,14 +347,28 @@ int main() {
       GenerateOutline(bush_image, &game.bush_outline_point_count);
   UnloadImage(bush_image);
 
-  Image car_image = LoadImage("assets/craftpix-889156-free-racing-game-kit/PNG/"
-                              "Car_1_Main_Positions/Car_1_01.png");
+  Image car_image = LoadImage(
+      "assets/free-2d-battle-tank-game-assets/PNG/Hulls_Color_A/Hull_02.png");
   game.car.texture = LoadTextureFromImage(car_image);
   game.car.texture_rec =
       (Rectangle){0, 0, game.car.texture.width, game.car.texture.height};
   UnloadImage(car_image);
 
-  game.car.width = 80;
+  Image weapon_image = LoadImage(
+      "assets/free-2d-battle-tank-game-assets/PNG/Weapon_Color_A/Gun_02.png");
+  game.car.weapon_texture = LoadTextureFromImage(weapon_image);
+  game.car.weapon_texture_rec = (Rectangle){0, 0, game.car.weapon_texture.width,
+                                            game.car.weapon_texture.height};
+  UnloadImage(weapon_image);
+
+  Image track_image = LoadImage(
+      "assets/free-2d-battle-tank-game-assets/PNG/Tracks/Track_2_A.png");
+  game.car.track_texture = LoadTextureFromImage(track_image);
+  game.car.track_texture_rec = (Rectangle){0, 0, game.car.track_texture.width,
+                                           game.car.track_texture.height};
+  UnloadImage(track_image);
+
+  game.car.width = 150;
   game.car.length = 150;
   game.car.x = game.width / 2.0f - game.car.width / 2.0f;
   game.car.y = game.height / 2.0f - game.car.length / 2.0f;
@@ -362,6 +410,8 @@ int main() {
   }
 
   UnloadTexture(game.car.texture);
+  UnloadTexture(game.car.weapon_texture);
+  UnloadTexture(game.car.track_texture);
   UnloadTexture(game.soil_texture);
   UnloadTexture(game.bush_texture);
   free(game.bush_outline_points);
