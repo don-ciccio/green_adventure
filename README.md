@@ -6,8 +6,8 @@ This is a simple 2D racing game built with C and the Raylib library. The game fe
 
 ### Prerequisites
 
-- A C compiler (like GCC or Clang)
-- The Raylib library installed on your system
+-   A C compiler (like GCC or Clang)
+-   The Raylib library installed on your system
 
 ### Building
 
@@ -29,16 +29,16 @@ Once the game is built, you can run it from the root directory with the followin
 
 ## Features
 
-- **Infinite World:** The game world is procedurally generated and infinite, so you can drive forever!
-- **Drifting Mechanics:** The car has a simple drifting mechanic that allows you to slide around corners.
-- **Skidmarks:** When you drift, the car leaves skidmarks on the ground. These are implemented with a particle system, so they fade away over time.
+-   **Infinite World:** The game world is procedurally generated and infinite, so you can drive forever!
+-   **Drifting Mechanics:** The car has a simple drifting mechanic that allows you to slide around corners.
+-   **Skidmarks:** When you drift, the car leaves skidmarks on the ground. These are implemented with a particle system, so they fade away over time.
 
 ## Controls
 
-- **Up Arrow:** Accelerate
-- **Down Arrow:** Brake/Reverse
-- **Left Arrow:** Steer Left
-- **Right Arrow:** Steer Right
+-   **Up Arrow:** Accelerate
+-   **Down Arrow:** Brake/Reverse
+-   **Left Arrow:** Steer Left
+-   **Right Arrow:** Steer Right
 
 ## Assets
 
