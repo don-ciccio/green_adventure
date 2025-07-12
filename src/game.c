@@ -193,16 +193,6 @@ void DrawWorld(Game *game) {
           game->car.x += move_back_distance * cosf(radians);
           game->car.y += move_back_distance * sinf(radians);
         }
-
-        Color outline_color = collided ? BLUE : RED;
-        for (int i = 0; i < game->bush_outline_point_count; i++) {
-          Vector2 p1 = game->bush_outline_points[i];
-          Vector2 p2 =
-              game->bush_outline_points[(i + 1) %
-                                        game->bush_outline_point_count];
-          DrawLine(bush_x + p1.x, bush_y + p1.y, bush_x + p2.x, bush_y + p2.y,
-                   outline_color);
-        }
       }
     }
   }
