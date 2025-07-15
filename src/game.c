@@ -42,6 +42,8 @@ typedef struct {
   Rectangle weapon_texture_rec;
   Texture2D track_texture;
   Rectangle track_texture_rec;
+  float track_animation_offset;
+  float weapon_angle;
 } Car;
 
 typedef struct {
@@ -228,6 +230,14 @@ void UpdateCar(float dt, Car *car) {
       car->steering = MAX_STEERING;
   }
 
+  // Weapon rotation controls
+  if (IsKeyDown(KEY_A)) {
+    car->weapon_angle -= 90.0f * dt; // Rotate left
+  }
+  if (IsKeyDown(KEY_D)) {
+    car->weapon_angle += 90.0f * dt; // Rotate right
+  }
+
   car->steering *= (1 - STEER_BACK_SPEED);
   car->angle += car->steering;
   car->drift_angle =
@@ -240,6 +250,14 @@ void UpdateCar(float dt, Car *car) {
   radians = PI * (car->drift_angle - 90) / 180;
   car->x += car->speed * cosf(radians);
   car->y += car->speed * sinf(radians);
+
+  // Update track animation based on speed
+  car->track_animation_offset += car->speed * dt * 50.0f; // Scale factor for animation speed
+  if (car->track_animation_offset > car->track_texture.height) {
+    car->track_animation_offset -= car->track_texture.height;
+  } else if (car->track_animation_offset < 0) {
+    car->track_animation_offset += car->track_texture.height;
+  }
 }
 
 void UpdateAndDrawParticles(float dt, Game *game) {
@@ -299,18 +317,26 @@ void DrawCar(const Car *car) {
   float track_width = (float)car->width * track_width_scale;
   float track_offset_x = car->width * 0.28f;
 
+  // Animated track texture rectangle
+  Rectangle animated_track_rec = {
+    0, 
+    car->track_animation_offset,
+    car->track_texture_rec.width,
+    car->track_texture_rec.height
+  };
+
   // Left Track
   Rectangle left_track_rec = {car->x, car->y, track_width, (float)car->length};
   Vector2 left_track_origin = {track_width / 2.0f + track_offset_x,
                                (float)car->length / 2.0f};
-  DrawTexturePro(car->track_texture, car->track_texture_rec, left_track_rec,
+  DrawTexturePro(car->track_texture, animated_track_rec, left_track_rec,
                  left_track_origin, car->angle, WHITE);
 
   // Right Track
   Rectangle right_track_rec = {car->x, car->y, track_width, (float)car->length};
   Vector2 right_track_origin = {track_width / 2.0f - track_offset_x,
                                 (float)car->length / 2.0f};
-  DrawTexturePro(car->track_texture, car->track_texture_rec, right_track_rec,
+  DrawTexturePro(car->track_texture, animated_track_rec, right_track_rec,
                  right_track_origin, car->angle, WHITE);
 
   DrawTexturePro(car->texture, car->texture_rec, car_rec, car_origin,
@@ -324,7 +350,7 @@ void DrawCar(const Car *car) {
   Vector2 weapon_origin = {weapon_rec.width / 2.0f, weapon_rec.height / 2.0f};
 
   DrawTexturePro(car->weapon_texture, car->weapon_texture_rec, weapon_rec,
-                 weapon_origin, car->angle, WHITE);
+                 weapon_origin, car->angle + car->weapon_angle, WHITE);
 }
 
 int main() {
@@ -377,6 +403,8 @@ int main() {
   game.car.angle = 0;
   game.car.drift_angle = 0;
   game.car.steering = 0;
+  game.car.track_animation_offset = 0;
+  game.car.weapon_angle = 0;
 
   game.active_particles = 0;
 
