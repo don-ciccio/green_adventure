@@ -30,6 +30,9 @@ void renderer_draw_game(game_context *gc) {
   // Draw ground plane
   DrawPlane((Vector3){0, 0, 0}, (Vector2){50, 50}, WHITE);
 
+  // Draw grid on the floor
+  DrawGrid(60, 1.0f);
+
   EndMode3D();
 
   // Draw HUD

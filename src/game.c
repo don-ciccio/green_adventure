@@ -72,7 +72,7 @@ void game_init(game_context *gc) {
 
   // Initialize player
   player_init(&gc->player);
-  player_load_model(&gc->player, "./assets/cesium_man.m3d");
+  player_load_model(&gc->player, "./assets/orc_warrior.glb");
 
   // Initialize enemies
   enemies_init(gc);

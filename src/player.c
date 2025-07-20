@@ -155,8 +155,28 @@ void player_update(game_context *gc) {
 }
 
 void player_draw(const player_t *player) {
-  DrawModelEx(player->model, player->position, (Vector3){0, 1, 0},
-              player->rotation_y, (Vector3){1.0f, 1.0f, 1.0f}, player->color);
+  // We need to apply both rotations: upright (X-axis) AND direction (Y-axis)
+  // Since DrawModelEx can only handle one rotation at a time, we need to use
+  // matrix transformations
+
+  // Create transformation matrices
+  Matrix uprightRotation = MatrixRotateX(90.0f * DEG2RAD); // Make upright
+  Matrix directionRotation =
+      MatrixRotateY(player->rotation_y * DEG2RAD);    // Face direction
+  Matrix scaleMatrix = MatrixScale(1.0f, 1.0f, 1.0f); // Normal scale
+  Matrix translationMatrix = MatrixTranslate(
+      player->position.x, player->position.y, player->position.z);
+
+  // Combine transformations: Scale -> Upright -> Direction -> Translation
+  Matrix transform = MatrixMultiply(scaleMatrix, uprightRotation);
+  transform = MatrixMultiply(transform, directionRotation);
+  transform = MatrixMultiply(transform, translationMatrix);
+
+  // Apply the combined transformation
+  Model tempModel = player->model;
+  tempModel.transform = transform;
+
+  DrawModel(tempModel, (Vector3){0, 0, 0}, 1.0f, player->color);
 }
 
 void player_cleanup(player_t *player) {
