@@ -5,24 +5,27 @@
 #include "scene.h"
 #include <math.h>
 
-#define TREE_PATCH_COUNT 8
+#define TREE_PATCH_COUNT 4
 
-SceneNodeId CreateTreePatch(SceneId sceneId, SceneModelId modelId, int count) {
+SceneNodeId CreateTreePatch(SceneId sceneId, SceneModelId *modelIds,
+                            int modelCount, int count) {
   SceneNodeId root = AcquireSceneNode(sceneId);
 
   for (int i = 0; i < count; i++) {
     SceneNodeId firTreeNodeId = AcquireSceneNode(sceneId);
-    SetSceneNodeModel(firTreeNodeId, modelId);
+    // Cycle through different tree models for variety
+    SceneModelId currentModelId = modelIds[i % modelCount];
+    SetSceneNodeModel(firTreeNodeId, currentModelId);
     // Medium spread for balanced density
     float rx = GetRandomValue(-800, 800) * 0.01f; // -8 to +8 units
     float rz = GetRandomValue(-800, 800) * 0.01f; // -8 to +8 units
     SetSceneNodePosition(firTreeNodeId, rx, 0, rz);
 
-    // Bigger trees - more realistic forest size
-    float scale = GetRandomValue(200, 240) *
-                  0.01f; // 1.8 to 2.2 scale (significantly taller than player)
+    // Smaller trees - reduced scale
+    float scale = GetRandomValue(120, 160) *
+                  0.01f; // 1.2 to 1.6 scale (smaller than before)
     float scaleHeight =
-        GetRandomValue(-15, 15) * 0.01f + scale; // Slight height variation
+        GetRandomValue(-10, 10) * 0.01f + scale; // Slight height variation
     SetSceneNodeScale(firTreeNodeId, scale, scaleHeight,
                       scale); // Uniform X/Z scaling
     SetSceneNodeRotation(firTreeNodeId, 0, GetRandomValue(0, 360), 0);
@@ -40,31 +43,61 @@ void game_init(game_context *gc) {
   // Initialize scene
   gc->sceneId = LoadScene();
 
-  // Load fir tree model and create tree patches
-  Model firTree = LoadModel("./assets/firtree-1.glb");
-  if (firTree.meshCount > 0) {
-    // Set texture filter for better quality
-    if (firTree.materialCount > 0) {
-      SetTextureFilter(firTree.materials[0].maps[MATERIAL_MAP_ALBEDO].texture,
-                       TEXTURE_FILTER_BILINEAR);
+  // Load custom tree texture
+  Texture2D treeTexture = LoadTexture("./assets/Colorsheet Tree Cold.png");
+  SetTextureFilter(treeTexture, TEXTURE_FILTER_BILINEAR);
+
+  // Load tree pack model and extract individual meshes
+  Model treePack = LoadModel("./assets/LowPolyTreePack.glb");
+  if (treePack.meshCount > 0) {
+    TraceLog(LOG_INFO, "Loaded LowPolyTreePack with %d meshes",
+             treePack.meshCount);
+
+    // Create individual models for each mesh
+    SceneModelId *treeModelIds =
+        (SceneModelId *)malloc(treePack.meshCount * sizeof(SceneModelId));
+
+    for (int i = 0; i < treePack.meshCount; i++) {
+      // Create a model with only one mesh
+      Model singleTreeModel = {0};
+      singleTreeModel.meshCount = 1;
+      singleTreeModel.meshes = &treePack.meshes[i];
+      singleTreeModel.materialCount = 1;
+
+      // Create a new material with the custom texture
+      Material *customMaterial = (Material *)malloc(sizeof(Material));
+      *customMaterial = LoadMaterialDefault();
+      customMaterial->maps[MATERIAL_MAP_ALBEDO].texture = treeTexture;
+
+      singleTreeModel.materials = customMaterial;
+
+      // Set mesh material index
+      int *meshMaterial = (int *)malloc(sizeof(int));
+      *meshMaterial = 0;
+      singleTreeModel.meshMaterial = meshMaterial;
+
+      treeModelIds[i] = AddModelToScene(gc->sceneId, singleTreeModel,
+                                        TextFormat("tree_mesh_%d", i), 1);
     }
 
-    SceneModelId firTreeId =
-        AddModelToScene(gc->sceneId, firTree, "fir tree", 1);
-
-    // Balanced tree distribution
+    // Balanced tree distribution with variety
     for (int i = 0; i < TREE_PATCH_COUNT; i++) {
       SceneNodeId treePatchNodeId =
-          CreateTreePatch(gc->sceneId, firTreeId, 20); // 20 trees per patch
-      SetSceneNodePosition(treePatchNodeId, (i % 4) * 25.0f - 37.5f, 0,
-                           (i / 4) * 25.0f); // 25 unit spacing
+          CreateTreePatch(gc->sceneId, treeModelIds, treePack.meshCount,
+                          12); // Reduced from 20 to 12 trees per patch
+      SetSceneNodePosition(treePatchNodeId, (i % 2) * 30.0f - 15.0f, 0,
+                           (i / 2) * 30.0f - 15.0f); // Adjusted spacing
       SetSceneNodeName(treePatchNodeId, TextFormat("TreePatch_%d", i));
     }
 
-    TraceLog(LOG_INFO, "Created %d tree patches with fir trees",
-             TREE_PATCH_COUNT);
+    TraceLog(LOG_INFO,
+             "Created %d tree patches with %d different tree types using "
+             "custom texture",
+             TREE_PATCH_COUNT, treePack.meshCount);
+
+    free(treeModelIds);
   } else {
-    TraceLog(LOG_ERROR, "Failed to load firtree-1.glb model!");
+    TraceLog(LOG_ERROR, "Failed to load LowPolyTreePack.glb model!");
   }
 
   // Initialize camera
