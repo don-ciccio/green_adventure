@@ -322,6 +322,7 @@ SceneDrawStats DrawScene(SceneId sceneId, SceneDrawConfig config)
     unsigned long layerMask = config.layerMask;
     int sortMode = config.sortMode;
     char drawBoundingBoxes = config.drawBoundingBoxes;
+    Shader shader = config.shader;  // Add this line
 
     Vector4 frustumPlanes[6];
     GetCameraFrustumPlanes(camera, frustumPlanes);
@@ -367,7 +368,16 @@ SceneDrawStats DrawScene(SceneId sceneId, SceneDrawConfig config)
 
             Color colorTint = WHITE;
             model.materials[model.meshMaterial[i]].maps[MATERIAL_MAP_DIFFUSE].color = colorTint;
-            DrawMesh(model.meshes[i], model.materials[model.meshMaterial[i]], matrix);
+            
+            // Use the lighting shader instead of default material shader
+            if (shader.id > 0) {
+                Material tempMaterial = model.materials[model.meshMaterial[i]];
+                tempMaterial.shader = shader;
+                DrawMesh(model.meshes[i], tempMaterial, matrix);
+            } else {
+                DrawMesh(model.meshes[i], model.materials[model.meshMaterial[i]], matrix);
+            }
+            
             model.materials[model.meshMaterial[i]].maps[MATERIAL_MAP_DIFFUSE].color = color;
 
             stats.meshDrawCount++;

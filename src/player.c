@@ -154,29 +154,46 @@ void player_update(game_context *gc) {
   player_handle_collision(gc, old_position);
 }
 
-void player_draw(const player_t *player) {
-  // We need to apply both rotations: upright (X-axis) AND direction (Y-axis)
-  // Since DrawModelEx can only handle one rotation at a time, we need to use
-  // matrix transformations
+void player_draw(const player_t *player, Shader lightingShader) {
+  // Debug: Check if shader is valid
+  static int debugCounter = 0;
+  if (debugCounter % 300 == 0) { // Every 5 seconds
+    TraceLog(LOG_INFO, "Drawing player with shader ID: %d", lightingShader.id);
+  }
+  debugCounter++;
 
   // Create transformation matrices
-  Matrix uprightRotation = MatrixRotateX(90.0f * DEG2RAD); // Make upright
-  Matrix directionRotation =
-      MatrixRotateY(player->rotation_y * DEG2RAD);    // Face direction
-  Matrix scaleMatrix = MatrixScale(1.0f, 1.0f, 1.0f); // Normal scale
+  Matrix uprightRotation = MatrixRotateX(90.0f * DEG2RAD);
+  Matrix directionRotation = MatrixRotateY(player->rotation_y * DEG2RAD);
+  Matrix scaleMatrix = MatrixScale(1.0f, 1.0f, 1.0f);
   Matrix translationMatrix = MatrixTranslate(
       player->position.x, player->position.y, player->position.z);
 
-  // Combine transformations: Scale -> Upright -> Direction -> Translation
+  // Combine transformations
   Matrix transform = MatrixMultiply(scaleMatrix, uprightRotation);
   transform = MatrixMultiply(transform, directionRotation);
   transform = MatrixMultiply(transform, translationMatrix);
 
-  // Apply the combined transformation
-  Model tempModel = player->model;
-  tempModel.transform = transform;
-
-  DrawModel(tempModel, (Vector3){0, 0, 0}, 1.0f, player->color);
+  // Draw each mesh with the lighting shader
+  Model model = player->model;
+  for (int i = 0; i < model.meshCount; i++) {
+    if (lightingShader.id > 0) {
+      // Create a temporary material with the lighting shader
+      Material tempMaterial = model.materials[model.meshMaterial[i]];
+      tempMaterial.shader = lightingShader;
+      
+      // Apply player color to the material
+      tempMaterial.maps[MATERIAL_MAP_DIFFUSE].color = player->color;
+      
+      DrawMesh(model.meshes[i], tempMaterial, transform);
+    } else {
+      TraceLog(LOG_WARNING, "Invalid lighting shader, using default");
+      // Fallback to default material
+      Material tempMaterial = model.materials[model.meshMaterial[i]];
+      tempMaterial.maps[MATERIAL_MAP_DIFFUSE].color = player->color;
+      DrawMesh(model.meshes[i], tempMaterial, transform);
+    }
+  }
 }
 
 void player_cleanup(player_t *player) {

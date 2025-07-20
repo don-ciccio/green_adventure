@@ -1,6 +1,7 @@
 #include "game.h"
 #include "camera.h"
 #include "enemy.h"
+#include "lighting.h"
 #include "player.h"
 #include "scene.h"
 #include <math.h>
@@ -109,6 +110,9 @@ void game_init(game_context *gc) {
 
   // Initialize enemies
   enemies_init(gc);
+
+  // Initialize lighting system
+  lighting_init(gc);
 }
 
 void game_handle_input(game_context *gc) {
@@ -116,6 +120,17 @@ void game_handle_input(game_context *gc) {
 
   if (IsKeyPressed(KEY_ESCAPE)) {
     gc->paused = !gc->paused;
+  }
+
+  // Light toggle controls
+  if (IsKeyPressed(KEY_Y)) {
+    gc->lights[0].enabled = !gc->lights[0].enabled;
+  }
+  if (IsKeyPressed(KEY_R)) {
+    gc->lights[1].enabled = !gc->lights[1].enabled;
+  }
+  if (IsKeyPressed(KEY_G)) {
+    gc->lights[2].enabled = !gc->lights[2].enabled;
   }
 }
 
@@ -130,6 +145,7 @@ void game_update(game_context *gc) {
 }
 
 void game_cleanup(game_context *gc) {
+  lighting_cleanup(gc);
   player_cleanup(&gc->player);
   UnloadScene(gc->sceneId);
 }

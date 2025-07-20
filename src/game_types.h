@@ -1,8 +1,8 @@
 #ifndef GAME_TYPES_H
 #define GAME_TYPES_H
 
-#include <raylib.h>
 #include "scene.h"
+#include <raylib.h>
 
 #include "../lib/raylib.h"
 #include "../lib/raymath.h"
@@ -56,25 +56,55 @@ struct player_t {
   BoundingBox bbox;
 };
 
+// Add these includes at the top
+#include <rlgl.h>
+
+// Add lighting constants
+#define MAX_LIGHTS 4
+
+// Light types
+typedef enum { LIGHT_DIRECTIONAL = 0, LIGHT_POINT } LightType;
+
+// Light structure
+typedef struct Light {
+  int type;
+  bool enabled;
+  Vector3 position;
+  Vector3 target;
+  Color color;
+
+  // Shader locations
+  int enabledLoc;
+  int typeLoc;
+  int positionLoc;
+  int targetLoc;
+  int colorLoc;
+} Light;
+
 // Game context structure
 struct game_context {
   Camera camera;
   player_t player;
   enemy_t enemies[ENTITY_LIMIT];
-  int enemy_count;  // Changed from num_enemies to enemy_count
+  int enemy_count;
   bool paused;
   bool running;
   float camera_distance;
   float camera_angle;
-  
+
   // Scene system
   SceneId sceneId;
   SceneNodeId doorNodeId;
   SceneModelId doorModelId;
-  
+
   // Direct door model (for testing)
   Model doorModel;
   Vector3 doorPosition;
+
+  // Lighting system
+  Shader lightingShader;
+  Light lights[MAX_LIGHTS];
+  int lightCount;
 };
 
 #endif // GAME_TYPES_H
