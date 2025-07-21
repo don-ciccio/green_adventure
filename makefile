@@ -6,7 +6,7 @@ OBJ_DIR = bin
 TARGET = $(OBJ_DIR)/game
 
 # Source files
-SOURCES = $(SRC_DIR)/main.c $(SRC_DIR)/game.c $(SRC_DIR)/player.c $(SRC_DIR)/enemy.c $(SRC_DIR)/camera.c $(SRC_DIR)/renderer.c $(SRC_DIR)/scene.c $(SRC_DIR)/lighting.c
+SOURCES = src/main.c src/game.c src/player.c src/camera.c src/enemy.c src/lighting.c src/renderer.c src/scene.c src/collision.c
 OBJECTS = $(SOURCES:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 
 # Default target

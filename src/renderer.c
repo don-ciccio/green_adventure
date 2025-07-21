@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "collision.h"
 #include "enemy.h"
 #include "lighting.h"
 #include "player.h"
@@ -6,14 +7,17 @@
 
 void renderer_draw_game(game_context *gc) {
   // Update camera position in shader
-  float cameraPos[3] = { gc->camera.position.x, gc->camera.position.y, gc->camera.position.z };
-  SetShaderValue(gc->lightingShader, gc->lightingShader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos, SHADER_UNIFORM_VEC3);
-  
+  float cameraPos[3] = {gc->camera.position.x, gc->camera.position.y,
+                        gc->camera.position.z};
+  SetShaderValue(gc->lightingShader,
+                 gc->lightingShader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos,
+                 SHADER_UNIFORM_VEC3);
+
   // Update light values
   for (int i = 0; i < gc->lightCount; i++) {
     UpdateLightValues(gc->lightingShader, gc->lights[i], i);
   }
-  
+
   BeginMode3D(gc->camera);
 
   // Draw scene with lighting shader
@@ -23,7 +27,7 @@ void renderer_draw_game(game_context *gc) {
                             .sortMode = SCENE_DRAW_SORT_FRONT_TO_BACK,
                             .drawBoundingBoxes = 0,
                             .drawCameraFrustum = 0,
-                            .shader = gc->lightingShader};  // Add this line
+                            .shader = gc->lightingShader};
 
   SceneDrawStats stats = DrawScene(gc->sceneId, config);
 
@@ -32,6 +36,9 @@ void renderer_draw_game(game_context *gc) {
 
   // Draw enemies
   enemies_draw(gc);
+
+  // Debug: Draw collision bounding boxes
+  collision_debug_draw(&gc->collisionSystem);
 
   // Draw ground plane
   DrawPlane((Vector3){0, 0, 0}, (Vector2){50, 50}, WHITE);

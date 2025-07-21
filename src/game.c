@@ -1,5 +1,6 @@
 #include "game.h"
 #include "camera.h"
+#include "collision.h"
 #include "enemy.h"
 #include "lighting.h"
 #include "player.h"
@@ -14,51 +15,30 @@ void game_init(game_context *gc) {
   // Initialize scene
   gc->sceneId = LoadScene();
 
+  // Initialize collision system
+  collision_init(&gc->collisionSystem);
+
   // Load and place a single house model
   Model houseModel = LoadModel("./assets/house.glb");
   if (houseModel.meshCount > 0) {
     TraceLog(LOG_INFO, "Loaded house.glb with %d meshes", houseModel.meshCount);
 
     // Add house model to scene
-    SceneModelId houseModelId =
-        AddModelToScene(gc->sceneId, houseModel, "house_model", 1);
-
+    SceneModelId houseModelId = AddModelToScene(gc->sceneId, houseModel, "house_model", 1);
+    
     // Create a single house node
-    gc->houseNodeId = AcquireSceneNode(gc->sceneId);
-    SetSceneNodeModel(gc->houseNodeId, houseModelId);
-
+    SceneNodeId houseNodeId = AcquireSceneNode(gc->sceneId);
+    SetSceneNodeModel(houseNodeId, houseModelId);
+    
     // Position the house at a reasonable distance from spawn
-    gc->housePosition = (Vector3){10.0f, 0.0f, 10.0f};
-    SetSceneNodePosition(gc->houseNodeId, gc->housePosition.x,
-                         gc->housePosition.y, gc->housePosition.z);
-
+    SetSceneNodePosition(houseNodeId, 10.0f, 0.0f, 10.0f);
+    
     // Keep normal scale and no rotation for clarity
-    SetSceneNodeScale(gc->houseNodeId, 1.0f, 1.0f, 1.0f);
-    SetSceneNodeRotation(gc->houseNodeId, 0.0f, 0.0f, 0.0f);
-    SetSceneNodeName(gc->houseNodeId, "MainHouse");
+    SetSceneNodeScale(houseNodeId, 1.0f, 1.0f, 1.0f);
+    SetSceneNodeRotation(houseNodeId, 0.0f, 0.0f, 0.0f);
+    SetSceneNodeName(houseNodeId, "MainHouse");
 
-    // Create a CUSTOM collision box for house walls only (not using model
-    // bounds) Adjust these values based on your house model's actual wall
-    // dimensions
-    float houseWidth = 4.0f;  // Adjust based on your house width
-    float houseDepth = 4.0f;  // Adjust based on your house depth
-    float houseHeight = 3.0f; // Adjust based on your house height
-
-    gc->houseBoundingBox = (BoundingBox){
-        .min = (Vector3){gc->housePosition.x - houseWidth / 2,
-                         gc->housePosition.y +
-                             0.5f, // Start collision above ground level
-                         gc->housePosition.z - houseDepth / 2},
-        .max = (Vector3){gc->housePosition.x + houseWidth / 2,
-                         gc->housePosition.y + houseHeight,
-                         gc->housePosition.z + houseDepth / 2}};
-
-    TraceLog(LOG_INFO,
-             "Created custom house collision box: min(%.1f,%.1f,%.1f) "
-             "max(%.1f,%.1f,%.1f)",
-             gc->houseBoundingBox.min.x, gc->houseBoundingBox.min.y,
-             gc->houseBoundingBox.min.z, gc->houseBoundingBox.max.x,
-             gc->houseBoundingBox.max.y, gc->houseBoundingBox.max.z);
+    TraceLog(LOG_INFO, "Created simple house scene");
   } else {
     TraceLog(LOG_ERROR, "Failed to load house.glb model!");
   }
@@ -123,5 +103,16 @@ void game_update(game_context *gc) {
 void game_cleanup(game_context *gc) {
   lighting_cleanup(gc);
   player_cleanup(&gc->player);
+  collision_cleanup(&gc->collisionSystem);
   UnloadScene(gc->sceneId);
+}
+
+// In your game drawing/rendering function, add:
+void game_draw(game_context *gc) {
+    // ... existing drawing code ...
+    
+    // Debug: Draw collision bounding boxes
+    collision_debug_draw(&gc->collisionSystem);
+    
+    // ... rest of drawing code ...
 }

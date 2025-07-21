@@ -1,0 +1,202 @@
+#include "collision.h"
+#include <raylib.h>
+#include <raymath.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+void collision_init(CollisionSystem *collisionSystem) {
+    // Load the colliders model
+    collisionSystem->colliderModel = LoadModel("./assets/colliders.glb");
+    
+    if (collisionSystem->colliderModel.meshCount == 0) {
+        TraceLog(LOG_ERROR, "Failed to load colliders.glb!");
+        collisionSystem->meshCount = 0;
+        return;
+    }
+    
+    TraceLog(LOG_INFO, "Loaded colliders.glb with %d meshes", collisionSystem->colliderModel.meshCount);
+    
+    // Allocate memory for collision meshes
+    collisionSystem->meshCount = collisionSystem->colliderModel.meshCount;
+    collisionSystem->meshes = (CollisionMesh*)MemAlloc(sizeof(CollisionMesh) * collisionSystem->meshCount);
+    
+    // Process each mesh in the collider model
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        Mesh mesh = collisionSystem->colliderModel.meshes[i];
+        CollisionMesh *collMesh = &collisionSystem->meshes[i];
+        
+        // Calculate bounding box
+        collMesh->bbox = GetMeshBoundingBox(mesh);
+        
+        // Copy vertex data
+        collMesh->vertexCount = mesh.vertexCount;
+        collMesh->vertices = (Vector3*)MemAlloc(sizeof(Vector3) * mesh.vertexCount);
+        
+        for (int v = 0; v < mesh.vertexCount; v++) {
+            collMesh->vertices[v] = (Vector3){
+                mesh.vertices[v * 3],
+                mesh.vertices[v * 3 + 1], 
+                mesh.vertices[v * 3 + 2]
+            };
+        }
+        
+        // Copy index data if available
+        if (mesh.indices) {
+            collMesh->indexCount = mesh.triangleCount * 3;
+            collMesh->indices = (unsigned short*)MemAlloc(sizeof(unsigned short) * collMesh->indexCount);
+            memcpy(collMesh->indices, mesh.indices, sizeof(unsigned short) * collMesh->indexCount);
+        } else {
+            collMesh->indexCount = 0;
+            collMesh->indices = NULL;
+        }
+        
+        // Set identity transform (can be modified later for dynamic objects)
+        collMesh->transform = MatrixIdentity();
+        
+        // Set name
+        snprintf(collMesh->name, sizeof(collMesh->name), "Collider_%d", i);
+        
+        TraceLog(LOG_INFO, "Collision mesh %d: %d vertices, %d indices, bbox: (%.2f,%.2f,%.2f) to (%.2f,%.2f,%.2f)", 
+                 i, collMesh->vertexCount, collMesh->indexCount,
+                 collMesh->bbox.min.x, collMesh->bbox.min.y, collMesh->bbox.min.z,
+                 collMesh->bbox.max.x, collMesh->bbox.max.y, collMesh->bbox.max.z);
+    }
+}
+
+void collision_cleanup(CollisionSystem *collisionSystem) {
+    if (collisionSystem->meshes) {
+        for (int i = 0; i < collisionSystem->meshCount; i++) {
+            CollisionMesh *mesh = &collisionSystem->meshes[i];
+            if (mesh->vertices) {
+                MemFree(mesh->vertices);
+            }
+            if (mesh->indices) {
+                MemFree(mesh->indices);
+            }
+        }
+        MemFree(collisionSystem->meshes);
+    }
+    
+    UnloadModel(collisionSystem->colliderModel);
+    collisionSystem->meshCount = 0;
+}
+
+bool collision_check_point(CollisionSystem *collisionSystem, Vector3 point) {
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *mesh = &collisionSystem->meshes[i];
+        
+        // Check if point is inside bounding box
+        if (point.x >= mesh->bbox.min.x && point.x <= mesh->bbox.max.x &&
+            point.y >= mesh->bbox.min.y && point.y <= mesh->bbox.max.y &&
+            point.z >= mesh->bbox.min.z && point.z <= mesh->bbox.max.z) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool collision_check_bbox(CollisionSystem *collisionSystem, BoundingBox bbox) {
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *mesh = &collisionSystem->meshes[i];
+        
+        if (CheckCollisionBoxes(bbox, mesh->bbox)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool collision_check_sphere(CollisionSystem *collisionSystem, Vector3 center, float radius) {
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *mesh = &collisionSystem->meshes[i];
+        
+        if (CheckCollisionBoxSphere(mesh->bbox, center, radius)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+Vector3 collision_get_closest_point(CollisionSystem *collisionSystem, Vector3 point) {
+    Vector3 closest = point;
+    float minDistance = INFINITY;
+    
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *mesh = &collisionSystem->meshes[i];
+        
+        // Get closest point on bounding box
+        Vector3 boxClosest = {
+            Clamp(point.x, mesh->bbox.min.x, mesh->bbox.max.x),
+            Clamp(point.y, mesh->bbox.min.y, mesh->bbox.max.y),
+            Clamp(point.z, mesh->bbox.min.z, mesh->bbox.max.z)
+        };
+        
+        float distance = Vector3Distance(point, boxClosest);
+        if (distance < minDistance) {
+            minDistance = distance;
+            closest = boxClosest;
+        }
+    }
+    
+    return closest;
+}
+
+bool collision_raycast(CollisionSystem *collisionSystem, Ray ray, RayCollision *collision) {
+    RayCollision closest = {0};
+    closest.distance = INFINITY;
+    bool hit = false;
+    
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *mesh = &collisionSystem->meshes[i];
+        
+        RayCollision boxHit = GetRayCollisionBox(ray, mesh->bbox);
+        if (boxHit.hit && boxHit.distance < closest.distance) {
+            closest = boxHit;
+            hit = true;
+        }
+    }
+    
+    if (collision) {
+        *collision = closest;
+    }
+    
+    return hit;
+}
+
+void collision_debug_draw(CollisionSystem *collisionSystem) {
+    // Create transform matrix to match house position (10, 0, 10)
+    Matrix houseTransform = MatrixTranslate(10.0f, 0.0f, 10.0f);
+    
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *mesh = &collisionSystem->meshes[i];
+        
+        // Transform bounding box to match house position
+        BoundingBox transformedBBox = {
+            .min = Vector3Transform(mesh->bbox.min, houseTransform),
+            .max = Vector3Transform(mesh->bbox.max, houseTransform)
+        };
+        
+        // Draw transformed bounding box wireframe in green
+        DrawBoundingBox(transformedBBox, GREEN);
+        
+        // Draw actual mesh with house transform
+        Mesh rayMesh = collisionSystem->colliderModel.meshes[i];
+        DrawMesh(rayMesh, LoadMaterialDefault(), houseTransform);
+        
+        // Draw wireframe with transformed vertices
+        if (mesh->indices && mesh->indexCount > 0) {
+            for (int j = 0; j < mesh->indexCount; j += 3) {
+                // Get triangle vertices and transform them
+                Vector3 v1 = Vector3Transform(mesh->vertices[mesh->indices[j]], houseTransform);
+                Vector3 v2 = Vector3Transform(mesh->vertices[mesh->indices[j + 1]], houseTransform);
+                Vector3 v3 = Vector3Transform(mesh->vertices[mesh->indices[j + 2]], houseTransform);
+                
+                // Draw triangle edges
+                DrawLine3D(v1, v2, RED);
+                DrawLine3D(v2, v3, RED);
+                DrawLine3D(v3, v1, RED);
+            }
+        }
+    }
+}

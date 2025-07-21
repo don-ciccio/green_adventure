@@ -78,7 +78,7 @@ typedef struct SceneDrawConfig {
   unsigned char sortMode;
   unsigned char drawBoundingBoxes : 1;
   unsigned char drawCameraFrustum : 1;
-  Shader shader; // Add this line
+  Shader shader;  // Add this line
 } SceneDrawConfig;
 
 typedef struct SceneDrawStats {

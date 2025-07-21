@@ -31,6 +31,23 @@ typedef struct enemy_t enemy_t;
 typedef struct player_t player_t;
 typedef struct game_context game_context;
 
+// Collision system structures
+typedef struct CollisionMesh {
+  BoundingBox bbox;
+  Vector3 *vertices;
+  int vertexCount;
+  unsigned short *indices;
+  int indexCount;
+  Matrix transform;
+  char name[64];
+} CollisionMesh;
+
+typedef struct CollisionSystem {
+  CollisionMesh *meshes;
+  int meshCount;
+  Model colliderModel;
+} CollisionSystem;
+
 // Enemy structure
 struct enemy_t {
   Vector3 position;
@@ -112,15 +129,13 @@ struct game_context {
   Model doorModel;
   Vector3 doorPosition;
 
-  // House collision data
-  SceneNodeId houseNodeId;
-  BoundingBox houseBoundingBox;
-  Vector3 housePosition;
-
   // Lighting system
   Shader lightingShader;
   Light lights[MAX_LIGHTS];
   int lightCount;
+
+  // Collision system
+  CollisionSystem collisionSystem;
 };
 
 #endif // GAME_TYPES_H

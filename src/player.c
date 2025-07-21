@@ -1,8 +1,10 @@
 #include "player.h"
+#include "collision.h"
 #include "enemy.h"
 
 void player_init(player_t *player) {
-  player->position = (Vector3){0.0f, 1.0f, 2.0f};
+  player->position =
+      (Vector3){0.0f, 1.0f, 0.0f}; // Start at origin, should be within collision boundaries
   player->size = (Vector3){1.0f, 2.0f, 1.0f};
   player->color = WHITE;
   player->rotation_y = 0.0f;
@@ -157,29 +159,33 @@ void player_handle_animation(player_t *player, bool moved) {
 void player_handle_collision(game_context *gc, Vector3 old_position) {
   gc->player.bbox = player_get_bbox(&gc->player);
 
-  bool collision = false;
+  // Check collision with environment using collision system
+  bool environmentCollision =
+      collision_check_bbox(&gc->collisionSystem, gc->player.bbox);
+
+  // Invert the logic: block movement when NOT in collision (outside boundaries)
+  if (!environmentCollision) {
+    // Revert to old position if NOT colliding with environment (outside boundaries)
+    gc->player.position = old_position;
+    gc->player.bbox = player_get_bbox(&gc->player);
+    TraceLog(LOG_INFO, "Player blocked from moving outside collision boundaries");
+  }
 
   // Check collision with enemies
+  bool enemyCollision = false;
   for (int i = 0; i < gc->enemy_count; i++) {
     if (gc->enemies[i].hp > 0) {
       BoundingBox enemy_bbox = enemy_get_bbox(&gc->enemies[i]);
       if (CheckCollisionBoxes(gc->player.bbox, enemy_bbox)) {
-        collision = true;
+        enemyCollision = true;
         gc->enemies[i].hp -= 1.0f;
         break;
       }
     }
   }
 
-  // Check collision with house
-  if (CheckCollisionBoxes(gc->player.bbox, gc->houseBoundingBox)) {
-    collision = true;
-    TraceLog(LOG_INFO, "Player collided with house!");
-  }
-
-  if (collision) {
+  if (enemyCollision) {
     gc->player.color = RED;
-    gc->player.position = Vector3Lerp(gc->player.position, old_position, 0.5f);
   } else {
     gc->player.color = WHITE;
   }
