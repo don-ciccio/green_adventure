@@ -11,11 +11,42 @@ void player_init(player_t *player) {
   player->animFrameCounter = 0;
   player->animId = 0;
   player->anims = NULL;
+
+  // Initialize accessory system
+  for (int i = 0; i < BONE_SOCKETS; i++) {
+    player->showEquip[i] = true;
+    player->boneSocketIndex[i] = -1;
+  }
 }
 
 void player_load_model(player_t *player, const char *model_path) {
   player->model = LoadModel(model_path);
   player->anims = LoadModelAnimations(model_path, &player->animsCount);
+
+  // Load accessory models
+  player->equipModels[BONE_SOCKET_HAT] = LoadModel("./assets/greenman_hat.glb");
+  player->equipModels[BONE_SOCKET_HAND_R] =
+      LoadModel("./assets/greenman_sword.glb");
+  player->equipModels[BONE_SOCKET_HAND_L] =
+      LoadModel("./assets/greenman_shield.glb");
+
+  // Find bone socket indices
+  for (int i = 0; i < player->model.boneCount; i++) {
+    if (TextIsEqual(player->model.bones[i].name, "socket_hat")) {
+      player->boneSocketIndex[BONE_SOCKET_HAT] = i;
+      continue;
+    }
+
+    if (TextIsEqual(player->model.bones[i].name, "socket_hand_R")) {
+      player->boneSocketIndex[BONE_SOCKET_HAND_R] = i;
+      continue;
+    }
+
+    if (TextIsEqual(player->model.bones[i].name, "socket_hand_L")) {
+      player->boneSocketIndex[BONE_SOCKET_HAND_L] = i;
+      continue;
+    }
+  }
 }
 
 BoundingBox player_get_bbox(const player_t *player) {
@@ -84,18 +115,34 @@ void player_handle_input(game_context *gc, Vector3 *movement, bool *moved) {
 
 void player_handle_animation(player_t *player, bool moved) {
   if (player->animsCount > 0) {
-    // Play animation when moving or spacebar is held
-    if (moved || IsKeyDown(KEY_SPACE)) {
-      player->animFrameCounter++;
-      if (player->animFrameCounter >=
-          player->anims[player->animId].frameCount) {
-        player->animFrameCounter = 0;
-      }
-      UpdateModelAnimation(player->model, player->anims[player->animId],
-                           player->animFrameCounter);
+    int targetAnimId = 1; // Default to idle animation
+
+    // Determine which animation to play based on player state
+    if (IsKeyDown(KEY_SPACE)) {
+      targetAnimId = 3; // Attack animation
+    } else if (moved) {
+      targetAnimId = 2; // Move/running animation
+    } else {
+      targetAnimId = 1; // Idle animation
     }
 
-    // Change animation with C key
+    // Switch animation if needed
+    if (player->animId != targetAnimId) {
+      player->animId = targetAnimId;
+      player->animFrameCounter = 0;
+    }
+
+    // Update animation frame
+    player->animFrameCounter++;
+    if (player->animFrameCounter >= player->anims[player->animId].frameCount) {
+      player->animFrameCounter = 0;
+    }
+
+    // Apply the animation to the model
+    UpdateModelAnimation(player->model, player->anims[player->animId],
+                         player->animFrameCounter);
+
+    // Keep the manual animation change with C key for testing
     if (IsKeyPressed(KEY_C)) {
       player->animFrameCounter = 0;
       player->animId++;
@@ -162,29 +209,28 @@ void player_draw(const player_t *player, Shader lightingShader) {
   }
   debugCounter++;
 
-  // Create transformation matrices
-  Matrix uprightRotation = MatrixRotateX(90.0f * DEG2RAD);
+  // Create transformation matrices - reduced scale for smaller player
   Matrix directionRotation = MatrixRotateY(player->rotation_y * DEG2RAD);
-  Matrix scaleMatrix = MatrixScale(1.0f, 1.0f, 1.0f);
+  Matrix scaleMatrix =
+      MatrixScale(0.6f, 0.6f, 0.6f); // Reduced from 1.0f to 0.8f
   Matrix translationMatrix = MatrixTranslate(
       player->position.x, player->position.y, player->position.z);
 
-  // Combine transformations
-  Matrix transform = MatrixMultiply(scaleMatrix, uprightRotation);
-  transform = MatrixMultiply(transform, directionRotation);
+  // Combine transformations (removed uprightRotation)
+  Matrix transform = MatrixMultiply(scaleMatrix, directionRotation);
   transform = MatrixMultiply(transform, translationMatrix);
 
-  // Draw each mesh with the lighting shader
+  // Draw main character model
   Model model = player->model;
   for (int i = 0; i < model.meshCount; i++) {
     if (lightingShader.id > 0) {
       // Create a temporary material with the lighting shader
       Material tempMaterial = model.materials[model.meshMaterial[i]];
       tempMaterial.shader = lightingShader;
-      
+
       // Apply player color to the material
       tempMaterial.maps[MATERIAL_MAP_DIFFUSE].color = player->color;
-      
+
       DrawMesh(model.meshes[i], tempMaterial, transform);
     } else {
       TraceLog(LOG_WARNING, "Invalid lighting shader, using default");
@@ -192,6 +238,50 @@ void player_draw(const player_t *player, Shader lightingShader) {
       Material tempMaterial = model.materials[model.meshMaterial[i]];
       tempMaterial.maps[MATERIAL_MAP_DIFFUSE].color = player->color;
       DrawMesh(model.meshes[i], tempMaterial, transform);
+    }
+  }
+
+  // Draw accessories at bone socket positions
+  if (player->animsCount > 0 && player->animId < player->animsCount) {
+    ModelAnimation currentAnim = player->anims[player->animId];
+
+    for (int i = 0; i < BONE_SOCKETS; i++) {
+      if (player->showEquip[i] && player->boneSocketIndex[i] >= 0) {
+        // Get bone transform from current animation frame
+        Transform boneTransform =
+            currentAnim.framePoses[player->animFrameCounter]
+                                  [player->boneSocketIndex[i]];
+
+        // Convert bone transform to matrix
+        Matrix boneMatrix = MatrixMultiply(
+            MatrixMultiply(MatrixScale(boneTransform.scale.x,
+                                       boneTransform.scale.y,
+                                       boneTransform.scale.z),
+                           QuaternionToMatrix(boneTransform.rotation)),
+            MatrixTranslate(boneTransform.translation.x,
+                            boneTransform.translation.y,
+                            boneTransform.translation.z));
+
+        // Combine with character transform
+        Matrix accessoryTransform = MatrixMultiply(boneMatrix, transform);
+
+        // Draw accessory model
+        Model accessoryModel = player->equipModels[i];
+        for (int j = 0; j < accessoryModel.meshCount; j++) {
+          if (lightingShader.id > 0) {
+            Material tempMaterial =
+                accessoryModel.materials[accessoryModel.meshMaterial[j]];
+            tempMaterial.shader = lightingShader;
+            DrawMesh(accessoryModel.meshes[j], tempMaterial,
+                     accessoryTransform);
+          } else {
+            Material tempMaterial =
+                accessoryModel.materials[accessoryModel.meshMaterial[j]];
+            DrawMesh(accessoryModel.meshes[j], tempMaterial,
+                     accessoryTransform);
+          }
+        }
+      }
     }
   }
 }
@@ -202,4 +292,9 @@ void player_cleanup(player_t *player) {
     player->anims = NULL;
   }
   UnloadModel(player->model);
+
+  // Cleanup accessory models
+  for (int i = 0; i < BONE_SOCKETS; i++) {
+    UnloadModel(player->equipModels[i]);
+  }
 }

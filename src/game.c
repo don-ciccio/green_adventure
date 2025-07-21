@@ -106,7 +106,7 @@ void game_init(game_context *gc) {
 
   // Initialize player
   player_init(&gc->player);
-  player_load_model(&gc->player, "./assets/orc_warrior.glb");
+  player_load_model(&gc->player, "./assets/greenman.glb"); // Changed from orc_warrior.glb
 
   // Initialize enemies
   enemies_init(gc);
@@ -131,6 +131,17 @@ void game_handle_input(game_context *gc) {
   }
   if (IsKeyPressed(KEY_G)) {
     gc->lights[2].enabled = !gc->lights[2].enabled;
+  }
+  
+  // Accessory toggle controls
+  if (IsKeyPressed(KEY_ONE)) {
+    gc->player.showEquip[BONE_SOCKET_HAT] = !gc->player.showEquip[BONE_SOCKET_HAT];
+  }
+  if (IsKeyPressed(KEY_TWO)) {
+    gc->player.showEquip[BONE_SOCKET_HAND_R] = !gc->player.showEquip[BONE_SOCKET_HAND_R];
+  }
+  if (IsKeyPressed(KEY_THREE)) {
+    gc->player.showEquip[BONE_SOCKET_HAND_L] = !gc->player.showEquip[BONE_SOCKET_HAND_L];
   }
 }
 

@@ -17,7 +17,7 @@
 #define WIDTH 1600
 #define HEIGHT 900
 #define ENTITY_LIMIT 256
-#define PLAYER_MOVE_SPEED 0.05f
+#define PLAYER_MOVE_SPEED 0.12f // Increased from 0.05f
 #define CAMERA_INITIAL_DISTANCE 8.0f
 #define CAMERA_MIN_DISTANCE 3.0f
 #define CAMERA_MAX_DISTANCE 15.0f
@@ -41,6 +41,12 @@ struct enemy_t {
   BoundingBox bbox;
 };
 
+// Add accessory constants
+#define BONE_SOCKETS 3
+#define BONE_SOCKET_HAT 0
+#define BONE_SOCKET_HAND_R 1
+#define BONE_SOCKET_HAND_L 2
+
 // Player structure
 struct player_t {
   Vector3 position;
@@ -54,6 +60,11 @@ struct player_t {
   float rotation_y;
   float move_speed;
   BoundingBox bbox;
+
+  // Accessory system
+  Model equipModels[BONE_SOCKETS];   // Hat, Sword, Shield
+  bool showEquip[BONE_SOCKETS];      // Toggle visibility
+  int boneSocketIndex[BONE_SOCKETS]; // Bone indices for sockets
 };
 
 // Add these includes at the top

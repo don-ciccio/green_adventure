@@ -1,8 +1,10 @@
 #include <raylib.h>
 #include <raymath.h>
+#include <rlgl.h>
+#include <string.h>
+
 #include "scene.h"  // Changed from <scene.h> to "scene.h"
 #include <string.h>
-#include <rlgl.h>
 
 static void *ListAlloc(void **list, unsigned long *count, unsigned long *capacity, unsigned long size)
 {
