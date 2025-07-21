@@ -37,7 +37,7 @@ void camera_update(game_context *gc) {
       gc->player.position.z + sinf(gc->camera_angle) * gc->camera_distance;
 
   // Lower camera height from 5.0f to 2.5f
-  gc->camera.position = (Vector3){cam_x, gc->player.position.y + 4.3f, cam_z};
+  gc->camera.position = (Vector3){cam_x, gc->player.position.y + 20.3f, cam_z};
   gc->camera.target = gc->player.position;
 
   // Handle zoom with mouse wheel

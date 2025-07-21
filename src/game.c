@@ -6,36 +6,6 @@
 #include "scene.h"
 #include <math.h>
 
-#define TREE_PATCH_COUNT 4
-
-SceneNodeId CreateTreePatch(SceneId sceneId, SceneModelId *modelIds,
-                            int modelCount, int count) {
-  SceneNodeId root = AcquireSceneNode(sceneId);
-
-  for (int i = 0; i < count; i++) {
-    SceneNodeId firTreeNodeId = AcquireSceneNode(sceneId);
-    // Cycle through different tree models for variety
-    SceneModelId currentModelId = modelIds[i % modelCount];
-    SetSceneNodeModel(firTreeNodeId, currentModelId);
-    // Medium spread for balanced density
-    float rx = GetRandomValue(-800, 800) * 0.01f; // -8 to +8 units
-    float rz = GetRandomValue(-800, 800) * 0.01f; // -8 to +8 units
-    SetSceneNodePosition(firTreeNodeId, rx, 0, rz);
-
-    // Smaller trees - reduced scale
-    float scale = GetRandomValue(120, 160) *
-                  0.01f; // 1.2 to 1.6 scale (smaller than before)
-    float scaleHeight =
-        GetRandomValue(-10, 10) * 0.01f + scale; // Slight height variation
-    SetSceneNodeScale(firTreeNodeId, scale, scaleHeight,
-                      scale); // Uniform X/Z scaling
-    SetSceneNodeRotation(firTreeNodeId, 0, GetRandomValue(0, 360), 0);
-    SetSceneNodeParent(firTreeNodeId, root);
-  }
-
-  return root;
-}
-
 void game_init(game_context *gc) {
   // Initialize game state
   gc->paused = false;
@@ -44,61 +14,53 @@ void game_init(game_context *gc) {
   // Initialize scene
   gc->sceneId = LoadScene();
 
-  // Load custom tree texture
-  Texture2D treeTexture = LoadTexture("./assets/Colorsheet Tree Cold.png");
-  SetTextureFilter(treeTexture, TEXTURE_FILTER_BILINEAR);
+  // Load and place a single house model
+  Model houseModel = LoadModel("./assets/house.glb");
+  if (houseModel.meshCount > 0) {
+    TraceLog(LOG_INFO, "Loaded house.glb with %d meshes", houseModel.meshCount);
 
-  // Load tree pack model and extract individual meshes
-  Model treePack = LoadModel("./assets/LowPolyTreePack.glb");
-  if (treePack.meshCount > 0) {
-    TraceLog(LOG_INFO, "Loaded LowPolyTreePack with %d meshes",
-             treePack.meshCount);
+    // Add house model to scene
+    SceneModelId houseModelId =
+        AddModelToScene(gc->sceneId, houseModel, "house_model", 1);
 
-    // Create individual models for each mesh
-    SceneModelId *treeModelIds =
-        (SceneModelId *)malloc(treePack.meshCount * sizeof(SceneModelId));
+    // Create a single house node
+    gc->houseNodeId = AcquireSceneNode(gc->sceneId);
+    SetSceneNodeModel(gc->houseNodeId, houseModelId);
 
-    for (int i = 0; i < treePack.meshCount; i++) {
-      // Create a model with only one mesh
-      Model singleTreeModel = {0};
-      singleTreeModel.meshCount = 1;
-      singleTreeModel.meshes = &treePack.meshes[i];
-      singleTreeModel.materialCount = 1;
+    // Position the house at a reasonable distance from spawn
+    gc->housePosition = (Vector3){10.0f, 0.0f, 10.0f};
+    SetSceneNodePosition(gc->houseNodeId, gc->housePosition.x,
+                         gc->housePosition.y, gc->housePosition.z);
 
-      // Create a new material with the custom texture
-      Material *customMaterial = (Material *)malloc(sizeof(Material));
-      *customMaterial = LoadMaterialDefault();
-      customMaterial->maps[MATERIAL_MAP_ALBEDO].texture = treeTexture;
+    // Keep normal scale and no rotation for clarity
+    SetSceneNodeScale(gc->houseNodeId, 1.0f, 1.0f, 1.0f);
+    SetSceneNodeRotation(gc->houseNodeId, 0.0f, 0.0f, 0.0f);
+    SetSceneNodeName(gc->houseNodeId, "MainHouse");
 
-      singleTreeModel.materials = customMaterial;
+    // Create a CUSTOM collision box for house walls only (not using model
+    // bounds) Adjust these values based on your house model's actual wall
+    // dimensions
+    float houseWidth = 4.0f;  // Adjust based on your house width
+    float houseDepth = 4.0f;  // Adjust based on your house depth
+    float houseHeight = 3.0f; // Adjust based on your house height
 
-      // Set mesh material index
-      int *meshMaterial = (int *)malloc(sizeof(int));
-      *meshMaterial = 0;
-      singleTreeModel.meshMaterial = meshMaterial;
-
-      treeModelIds[i] = AddModelToScene(gc->sceneId, singleTreeModel,
-                                        TextFormat("tree_mesh_%d", i), 1);
-    }
-
-    // Balanced tree distribution with variety
-    for (int i = 0; i < TREE_PATCH_COUNT; i++) {
-      SceneNodeId treePatchNodeId =
-          CreateTreePatch(gc->sceneId, treeModelIds, treePack.meshCount,
-                          12); // Reduced from 20 to 12 trees per patch
-      SetSceneNodePosition(treePatchNodeId, (i % 2) * 30.0f - 15.0f, 0,
-                           (i / 2) * 30.0f - 15.0f); // Adjusted spacing
-      SetSceneNodeName(treePatchNodeId, TextFormat("TreePatch_%d", i));
-    }
+    gc->houseBoundingBox = (BoundingBox){
+        .min = (Vector3){gc->housePosition.x - houseWidth / 2,
+                         gc->housePosition.y +
+                             0.5f, // Start collision above ground level
+                         gc->housePosition.z - houseDepth / 2},
+        .max = (Vector3){gc->housePosition.x + houseWidth / 2,
+                         gc->housePosition.y + houseHeight,
+                         gc->housePosition.z + houseDepth / 2}};
 
     TraceLog(LOG_INFO,
-             "Created %d tree patches with %d different tree types using "
-             "custom texture",
-             TREE_PATCH_COUNT, treePack.meshCount);
-
-    free(treeModelIds);
+             "Created custom house collision box: min(%.1f,%.1f,%.1f) "
+             "max(%.1f,%.1f,%.1f)",
+             gc->houseBoundingBox.min.x, gc->houseBoundingBox.min.y,
+             gc->houseBoundingBox.min.z, gc->houseBoundingBox.max.x,
+             gc->houseBoundingBox.max.y, gc->houseBoundingBox.max.z);
   } else {
-    TraceLog(LOG_ERROR, "Failed to load LowPolyTreePack.glb model!");
+    TraceLog(LOG_ERROR, "Failed to load house.glb model!");
   }
 
   // Initialize camera
@@ -106,7 +68,7 @@ void game_init(game_context *gc) {
 
   // Initialize player
   player_init(&gc->player);
-  player_load_model(&gc->player, "./assets/greenman.glb"); // Changed from orc_warrior.glb
+  player_load_model(&gc->player, "./assets/greenman.glb");
 
   // Initialize enemies
   enemies_init(gc);
@@ -132,16 +94,19 @@ void game_handle_input(game_context *gc) {
   if (IsKeyPressed(KEY_G)) {
     gc->lights[2].enabled = !gc->lights[2].enabled;
   }
-  
+
   // Accessory toggle controls
   if (IsKeyPressed(KEY_ONE)) {
-    gc->player.showEquip[BONE_SOCKET_HAT] = !gc->player.showEquip[BONE_SOCKET_HAT];
+    gc->player.showEquip[BONE_SOCKET_HAT] =
+        !gc->player.showEquip[BONE_SOCKET_HAT];
   }
   if (IsKeyPressed(KEY_TWO)) {
-    gc->player.showEquip[BONE_SOCKET_HAND_R] = !gc->player.showEquip[BONE_SOCKET_HAND_R];
+    gc->player.showEquip[BONE_SOCKET_HAND_R] =
+        !gc->player.showEquip[BONE_SOCKET_HAND_R];
   }
   if (IsKeyPressed(KEY_THREE)) {
-    gc->player.showEquip[BONE_SOCKET_HAND_L] = !gc->player.showEquip[BONE_SOCKET_HAND_L];
+    gc->player.showEquip[BONE_SOCKET_HAND_L] =
+        !gc->player.showEquip[BONE_SOCKET_HAND_L];
   }
 }
 

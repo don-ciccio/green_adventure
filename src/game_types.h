@@ -112,6 +112,11 @@ struct game_context {
   Model doorModel;
   Vector3 doorPosition;
 
+  // House collision data
+  SceneNodeId houseNodeId;
+  BoundingBox houseBoundingBox;
+  Vector3 housePosition;
+
   // Lighting system
   Shader lightingShader;
   Light lights[MAX_LIGHTS];

@@ -158,6 +158,8 @@ void player_handle_collision(game_context *gc, Vector3 old_position) {
   gc->player.bbox = player_get_bbox(&gc->player);
 
   bool collision = false;
+
+  // Check collision with enemies
   for (int i = 0; i < gc->enemy_count; i++) {
     if (gc->enemies[i].hp > 0) {
       BoundingBox enemy_bbox = enemy_get_bbox(&gc->enemies[i]);
@@ -167,6 +169,12 @@ void player_handle_collision(game_context *gc, Vector3 old_position) {
         break;
       }
     }
+  }
+
+  // Check collision with house
+  if (CheckCollisionBoxes(gc->player.bbox, gc->houseBoundingBox)) {
+    collision = true;
+    TraceLog(LOG_INFO, "Player collided with house!");
   }
 
   if (collision) {
