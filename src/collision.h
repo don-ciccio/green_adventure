@@ -25,6 +25,15 @@ Vector3 collision_get_closest_point(CollisionSystem *collisionSystem, Vector3 po
 // Check collision between a ray and collision meshes
 bool collision_raycast(CollisionSystem *collisionSystem, Ray ray, RayCollision *collision);
 
+// NEW: Advanced mesh-based collision detection using raycasting
+bool collision_check_mesh_raycast(CollisionSystem *collisionSystem, Vector3 position, Vector3 direction, float distance, RayCollision *hitInfo);
+
+// NEW: Check if player can move to a position using multiple raycasts
+bool collision_can_move_to_position(CollisionSystem *collisionSystem, Vector3 currentPos, Vector3 targetPos, float playerRadius);
+
+// NEW: Get collision normal for sliding movement
+Vector3 collision_get_slide_vector(CollisionSystem *collisionSystem, Vector3 position, Vector3 movement, float playerRadius);
+
 // Debug: Draw collision bounding boxes
 void collision_debug_draw(CollisionSystem *collisionSystem);
 

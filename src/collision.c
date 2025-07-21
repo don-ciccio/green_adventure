@@ -217,3 +217,89 @@ void collision_toggle_debug() {
 bool collision_is_debug_enabled() {
     return collision_debug_enabled;
 }
+
+
+// NEW: Advanced mesh-based collision detection using raycasting
+bool collision_check_mesh_raycast(CollisionSystem *collisionSystem, Vector3 position, Vector3 direction, float distance, RayCollision *hitInfo) {
+    Ray ray = { position, direction };
+    RayCollision closest = {0};
+    closest.distance = INFINITY;
+    bool hit = false;
+    
+    // Create transform matrix to match house position (10, 0, 10)
+    Matrix houseTransform = MatrixTranslate(10.0f, 0.0f, 10.0f);
+    
+    for (int i = 0; i < collisionSystem->meshCount; i++) {
+        CollisionMesh *collMesh = &collisionSystem->meshes[i];
+        Mesh mesh = collisionSystem->colliderModel.meshes[i];
+        
+        // Use GetRayCollisionMesh for precise triangle intersection
+        RayCollision meshHit = GetRayCollisionMesh(ray, mesh, houseTransform);
+        
+        if (meshHit.hit && meshHit.distance <= distance && meshHit.distance < closest.distance) {
+            closest = meshHit;
+            hit = true;
+        }
+    }
+    
+    if (hitInfo) {
+        *hitInfo = closest;
+    }
+    
+    return hit;
+}
+
+// NEW: Check if player can move to a position using multiple raycasts
+bool collision_can_move_to_position(CollisionSystem *collisionSystem, Vector3 currentPos, Vector3 targetPos, float playerRadius) {
+    Vector3 movement = Vector3Subtract(targetPos, currentPos);
+    float moveDistance = Vector3Length(movement);
+    
+    if (moveDistance < 0.001f) return true; // No movement
+    
+    Vector3 moveDirection = Vector3Normalize(movement);
+    
+    // Cast multiple rays around the player's cylinder
+    const int rayCount = 8;
+    const float angleStep = 2.0f * PI / rayCount;
+    
+    for (int i = 0; i < rayCount; i++) {
+        float angle = i * angleStep;
+        Vector3 offset = {
+            cosf(angle) * playerRadius,
+            0.0f,
+            sinf(angle) * playerRadius
+        };
+        
+        Vector3 rayStart = Vector3Add(currentPos, offset);
+        RayCollision hitInfo;
+        
+        // Cast ray in movement direction
+        if (collision_check_mesh_raycast(collisionSystem, rayStart, moveDirection, moveDistance + 0.1f, &hitInfo)) {
+            return false; // Collision detected
+        }
+    }
+    
+    // Also check center ray
+    RayCollision centerHit;
+    if (collision_check_mesh_raycast(collisionSystem, currentPos, moveDirection, moveDistance + 0.1f, &centerHit)) {
+        return false;
+    }
+    
+    return true; // No collision, movement is safe
+}
+
+// NEW: Get collision normal for sliding movement
+Vector3 collision_get_slide_vector(CollisionSystem *collisionSystem, Vector3 position, Vector3 movement, float playerRadius) {
+    Vector3 moveDirection = Vector3Normalize(movement);
+    float moveDistance = Vector3Length(movement);
+    
+    RayCollision hitInfo;
+    if (collision_check_mesh_raycast(collisionSystem, position, moveDirection, moveDistance + playerRadius, &hitInfo)) {
+        // Calculate slide vector along the collision surface
+        Vector3 normal = hitInfo.normal;
+        Vector3 slideDirection = Vector3Subtract(movement, Vector3Scale(normal, Vector3DotProduct(movement, normal)));
+        return slideDirection;
+    }
+    
+    return movement; // No collision, return original movement
+}

@@ -4,7 +4,7 @@
 
 void player_init(player_t *player) {
   player->position =
-      (Vector3){0.0f, 1.0f, 0.0f}; // Start at origin, should be within collision boundaries
+      (Vector3){10.0f, 1.0f, 10.0f}; // Spawn inside the house at (10, 1, 10)
   player->size = (Vector3){1.0f, 2.0f, 1.0f};
   player->color = WHITE;
   player->rotation_y = 0.0f;
@@ -157,38 +157,59 @@ void player_handle_animation(player_t *player, bool moved) {
 }
 
 void player_handle_collision(game_context *gc, Vector3 old_position) {
-  gc->player.bbox = player_get_bbox(&gc->player);
-
-  // Check collision with environment using collision system
-  bool environmentCollision =
-      collision_check_bbox(&gc->collisionSystem, gc->player.bbox);
-
-  // Invert the logic: block movement when NOT in collision (outside boundaries)
-  if (!environmentCollision) {
-    // Revert to old position if NOT colliding with environment (outside boundaries)
-    gc->player.position = old_position;
     gc->player.bbox = player_get_bbox(&gc->player);
-    TraceLog(LOG_INFO, "Player blocked from moving outside collision boundaries");
-  }
-
-  // Check collision with enemies
-  bool enemyCollision = false;
-  for (int i = 0; i < gc->enemy_count; i++) {
-    if (gc->enemies[i].hp > 0) {
-      BoundingBox enemy_bbox = enemy_get_bbox(&gc->enemies[i]);
-      if (CheckCollisionBoxes(gc->player.bbox, enemy_bbox)) {
-        enemyCollision = true;
-        gc->enemies[i].hp -= 1.0f;
-        break;
-      }
+    
+    // Use mesh-based collision detection instead of bounding box
+    float playerRadius = 0.3f; // Adjust based on your player size
+    
+    // Check if the new position is valid using raycasting
+    bool canMove = collision_can_move_to_position(&gc->collisionSystem, old_position, gc->player.position, playerRadius);
+    
+    if (!canMove) {
+        // Try sliding movement
+        Vector3 movement = Vector3Subtract(gc->player.position, old_position);
+        Vector3 slideMovement = collision_get_slide_vector(&gc->collisionSystem, old_position, movement, playerRadius);
+        
+        // Apply slide movement if it's significant
+        if (Vector3Length(slideMovement) > 0.01f) {
+            Vector3 newPos = Vector3Add(old_position, slideMovement);
+            
+            // Check if slide movement is valid
+            if (collision_can_move_to_position(&gc->collisionSystem, old_position, newPos, playerRadius)) {
+                gc->player.position = newPos;
+            } else {
+                // Revert to old position if sliding also fails
+                gc->player.position = old_position;
+            }
+        } else {
+            // Revert to old position
+            gc->player.position = old_position;
+        }
+        
+        TraceLog(LOG_INFO, "Player collision detected - movement blocked/adjusted");
     }
-  }
-
-  if (enemyCollision) {
-    gc->player.color = RED;
-  } else {
-    gc->player.color = WHITE;
-  }
+    
+    // Update bounding box after position adjustment
+    gc->player.bbox = player_get_bbox(&gc->player);
+    
+    // Check collision with enemies (keep existing logic)
+    bool enemyCollision = false;
+    for (int i = 0; i < gc->enemy_count; i++) {
+        if (gc->enemies[i].hp > 0) {
+            BoundingBox enemy_bbox = enemy_get_bbox(&gc->enemies[i]);
+            if (CheckCollisionBoxes(gc->player.bbox, enemy_bbox)) {
+                enemyCollision = true;
+                gc->enemies[i].hp -= 1.0f;
+                break;
+            }
+        }
+    }
+    
+    if (enemyCollision) {
+        gc->player.color = RED;
+    } else {
+        gc->player.color = WHITE;
+    }
 }
 
 void player_update(game_context *gc) {
