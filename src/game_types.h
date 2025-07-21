@@ -17,11 +17,11 @@
 #define WIDTH 1600
 #define HEIGHT 900
 #define ENTITY_LIMIT 256
-#define PLAYER_MOVE_SPEED 0.12f // Increased from 0.05f
-#define CAMERA_INITIAL_DISTANCE 8.0f
-#define CAMERA_MIN_DISTANCE 3.0f
-#define CAMERA_MAX_DISTANCE 15.0f
-#define CAMERA_SENSITIVITY 0.01f
+#define PLAYER_MOVE_SPEED 0.12f
+#define CAMERA_INITIAL_DISTANCE 20.0f  // Fixed distance for orthographic
+#define CAMERA_MIN_DISTANCE 15.0f      // Minimum zoom level
+#define CAMERA_MAX_DISTANCE 30.0f      // Maximum zoom level
+#define CAMERA_SENSITIVITY 0.01f       // Not used in orthographic mode
 #define ENEMY_COUNT 10
 #define ENEMY_SPEED 0.1f
 #define ENEMY_HP 100.0f

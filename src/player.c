@@ -62,55 +62,49 @@ BoundingBox player_get_bbox(const player_t *player) {
 }
 
 void player_handle_input(game_context *gc, Vector3 *movement, bool *moved) {
-  // Calculate camera-relative movement directions
-  Vector3 forward = {-cosf(gc->camera_angle), 0.0f, -sinf(gc->camera_angle)};
-  Vector3 right = {sinf(gc->camera_angle), 0.0f, -cosf(gc->camera_angle)};
-
-  // Analog input system for smooth 360-degree movement
+  // Fixed isometric movement directions that match visual expectations
+  // For isometric view: adjust directions to feel natural from camera perspective
+  
+  // Analog input system for smooth movement
   float input_x = 0.0f;
   float input_z = 0.0f;
 
-  // Keyboard input
+  // Keyboard input - adjusted directions for natural isometric feel
   if (IsKeyDown(KEY_UP) || IsKeyDown(KEY_W)) {
-    input_z += 1.0f;
+    input_z -= 1.0f; // Move towards camera (negative Z)
   }
   if (IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S)) {
-    input_z -= 1.0f;
+    input_z += 1.0f; // Move away from camera (positive Z)
   }
   if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
-    input_x += 1.0f;
+    input_x += 1.0f; // Move right (positive X)
   }
   if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
-    input_x -= 1.0f;
+    input_x -= 1.0f; // Move left (negative X)
   }
 
   // Gamepad support
   if (IsGamepadAvailable(0)) {
     float gamepad_x = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
     float gamepad_y = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
+    
+    // Direct mapping for gamepad (no transformation needed)
     input_x += gamepad_x;
-    input_z -= gamepad_y;
+    input_z -= gamepad_y; // Invert Y axis for forward/backward
   }
 
-  // Calculate movement direction
-  Vector3 input_direction = {0.0f, 0.0f, 0.0f};
-
+  // Check if there's any movement input
   if (input_x != 0.0f || input_z != 0.0f) {
-    input_direction.x = (forward.x * input_z) + (right.x * input_x);
-    input_direction.z = (forward.z * input_z) + (right.z * input_x);
     *moved = true;
-  }
-
-  // Normalize movement for consistent speed
-  if (*moved) {
-    float magnitude = sqrtf(input_direction.x * input_direction.x +
-                            input_direction.z * input_direction.z);
+    
+    // Normalize movement for consistent speed
+    float magnitude = sqrtf(input_x * input_x + input_z * input_z);
     if (magnitude > 0.0f) {
-      input_direction.x /= magnitude;
-      input_direction.z /= magnitude;
-
-      movement->x = input_direction.x * gc->player.move_speed;
-      movement->z = input_direction.z * gc->player.move_speed;
+      input_x /= magnitude;
+      input_z /= magnitude;
+      
+      movement->x = input_x * gc->player.move_speed;
+      movement->z = input_z * gc->player.move_speed;
     }
   }
 }
