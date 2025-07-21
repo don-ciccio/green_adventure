@@ -70,15 +70,17 @@ void renderer_draw_game(game_context *gc) {
                       stats.trianglesDrawCount),
            10, 10, 20, WHITE);
   DrawText("Press Y/R/G/B to toggle lights", 10, 30, 20, WHITE);
-  DrawText(TextFormat("Shader ID: %d", gc->lightingShader.id), 10, 50, 20,
+  DrawText("Press C to toggle collision debug", 10, 50, 20, WHITE);
+  DrawText(TextFormat("Shader ID: %d", gc->lightingShader.id), 10, 70, 20,
            WHITE);
-  DrawText(TextFormat("Active Lights: %d", gc->lightCount), 10, 70, 20, WHITE);
+  DrawText(TextFormat("Active Lights: %d", gc->lightCount), 10, 90, 20, WHITE);
+  DrawText(TextFormat("Collision Debug: %s", collision_is_debug_enabled() ? "ON" : "OFF"), 10, 110, 20, WHITE);
 
   // Show individual light status
   for (int i = 0; i < gc->lightCount; i++) {
     Color statusColor = gc->lights[i].enabled ? GREEN : RED;
     DrawText(
         TextFormat("Light %d: %s", i, gc->lights[i].enabled ? "ON" : "OFF"), 10,
-        90 + i * 20, 16, statusColor);
+        130 + i * 20, 16, statusColor);
   }
 }

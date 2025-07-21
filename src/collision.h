@@ -28,4 +28,10 @@ bool collision_raycast(CollisionSystem *collisionSystem, Ray ray, RayCollision *
 // Debug: Draw collision bounding boxes
 void collision_debug_draw(CollisionSystem *collisionSystem);
 
+// Toggle collision debug visualization
+void collision_toggle_debug();
+
+// Check if collision debug is enabled
+bool collision_is_debug_enabled();
+
 #endif // COLLISION_H

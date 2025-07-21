@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Global debug flag
+static bool collision_debug_enabled = false;
+
 void collision_init(CollisionSystem *collisionSystem) {
     // Load the colliders model
     collisionSystem->colliderModel = LoadModel("./assets/colliders.glb");
@@ -165,6 +168,11 @@ bool collision_raycast(CollisionSystem *collisionSystem, Ray ray, RayCollision *
 }
 
 void collision_debug_draw(CollisionSystem *collisionSystem) {
+    // Only draw if debug is enabled
+    if (!collision_debug_enabled) {
+        return;
+    }
+    
     // Create transform matrix to match house position (10, 0, 10)
     Matrix houseTransform = MatrixTranslate(10.0f, 0.0f, 10.0f);
     
@@ -199,4 +207,13 @@ void collision_debug_draw(CollisionSystem *collisionSystem) {
             }
         }
     }
+}
+
+void collision_toggle_debug() {
+    collision_debug_enabled = !collision_debug_enabled;
+    TraceLog(LOG_INFO, "Collision debug visualization: %s", collision_debug_enabled ? "ON" : "OFF");
+}
+
+bool collision_is_debug_enabled() {
+    return collision_debug_enabled;
 }

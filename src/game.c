@@ -75,6 +75,11 @@ void game_handle_input(game_context *gc) {
     gc->lights[2].enabled = !gc->lights[2].enabled;
   }
 
+  // Collision debug toggle
+  if (IsKeyPressed(KEY_C)) {
+    collision_toggle_debug();
+  }
+
   // Accessory toggle controls
   if (IsKeyPressed(KEY_ONE)) {
     gc->player.showEquip[BONE_SOCKET_HAT] =
