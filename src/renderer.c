@@ -74,7 +74,9 @@ void renderer_draw_game(game_context *gc) {
   DrawText(TextFormat("Shader ID: %d", gc->lightingShader.id), 10, 70, 20,
            WHITE);
   DrawText(TextFormat("Active Lights: %d", gc->lightCount), 10, 90, 20, WHITE);
-  DrawText(TextFormat("Collision Debug: %s", collision_is_debug_enabled() ? "ON" : "OFF"), 10, 110, 20, WHITE);
+  DrawText(TextFormat("Collision Debug: %s",
+                      collision_is_debug_enabled() ? "ON" : "OFF"),
+           10, 110, 20, WHITE);
 
   // Show individual light status
   for (int i = 0; i < gc->lightCount; i++) {

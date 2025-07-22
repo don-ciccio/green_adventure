@@ -63,8 +63,9 @@ BoundingBox player_get_bbox(const player_t *player) {
 
 void player_handle_input(game_context *gc, Vector3 *movement, bool *moved) {
   // Fixed isometric movement directions that match visual expectations
-  // For isometric view: adjust directions to feel natural from camera perspective
-  
+  // For isometric view: adjust directions to feel natural from camera
+  // perspective
+
   // Analog input system for smooth movement
   float input_x = 0.0f;
   float input_z = 0.0f;
@@ -87,7 +88,7 @@ void player_handle_input(game_context *gc, Vector3 *movement, bool *moved) {
   if (IsGamepadAvailable(0)) {
     float gamepad_x = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
     float gamepad_y = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
-    
+
     // Direct mapping for gamepad (no transformation needed)
     input_x += gamepad_x;
     input_z -= gamepad_y; // Invert Y axis for forward/backward
@@ -96,13 +97,13 @@ void player_handle_input(game_context *gc, Vector3 *movement, bool *moved) {
   // Check if there's any movement input
   if (input_x != 0.0f || input_z != 0.0f) {
     *moved = true;
-    
+
     // Normalize movement for consistent speed
     float magnitude = sqrtf(input_x * input_x + input_z * input_z);
     if (magnitude > 0.0f) {
       input_x /= magnitude;
       input_z /= magnitude;
-      
+
       movement->x = input_x * gc->player.move_speed;
       movement->z = input_z * gc->player.move_speed;
     }
@@ -151,59 +152,62 @@ void player_handle_animation(player_t *player, bool moved) {
 }
 
 void player_handle_collision(game_context *gc, Vector3 old_position) {
-    gc->player.bbox = player_get_bbox(&gc->player);
-    
-    // Use mesh-based collision detection instead of bounding box
-    float playerRadius = 0.3f; // Adjust based on your player size
-    
-    // Check if the new position is valid using raycasting
-    bool canMove = collision_can_move_to_position(&gc->collisionSystem, old_position, gc->player.position, playerRadius);
-    
-    if (!canMove) {
-        // Try sliding movement
-        Vector3 movement = Vector3Subtract(gc->player.position, old_position);
-        Vector3 slideMovement = collision_get_slide_vector(&gc->collisionSystem, old_position, movement, playerRadius);
-        
-        // Apply slide movement if it's significant
-        if (Vector3Length(slideMovement) > 0.01f) {
-            Vector3 newPos = Vector3Add(old_position, slideMovement);
-            
-            // Check if slide movement is valid
-            if (collision_can_move_to_position(&gc->collisionSystem, old_position, newPos, playerRadius)) {
-                gc->player.position = newPos;
-            } else {
-                // Revert to old position if sliding also fails
-                gc->player.position = old_position;
-            }
-        } else {
-            // Revert to old position
-            gc->player.position = old_position;
-        }
-        
-        TraceLog(LOG_INFO, "Player collision detected - movement blocked/adjusted");
-    }
-    
-    // Update bounding box after position adjustment
-    gc->player.bbox = player_get_bbox(&gc->player);
-    
-    // Check collision with enemies (keep existing logic)
-    bool enemyCollision = false;
-    for (int i = 0; i < gc->enemy_count; i++) {
-        if (gc->enemies[i].hp > 0) {
-            BoundingBox enemy_bbox = enemy_get_bbox(&gc->enemies[i]);
-            if (CheckCollisionBoxes(gc->player.bbox, enemy_bbox)) {
-                enemyCollision = true;
-                gc->enemies[i].hp -= 1.0f;
-                break;
-            }
-        }
-    }
-    
-    if (enemyCollision) {
-        gc->player.color = RED;
+  gc->player.bbox = player_get_bbox(&gc->player);
+
+  // Use mesh-based collision detection instead of bounding box
+  float playerRadius = 0.3f; // Adjust based on your player size
+
+  // Check if the new position is valid using raycasting
+  bool canMove = collision_can_move_to_position(
+      &gc->collisionSystem, old_position, gc->player.position, playerRadius);
+
+  if (!canMove) {
+    // Try sliding movement
+    Vector3 movement = Vector3Subtract(gc->player.position, old_position);
+    Vector3 slideMovement = collision_get_slide_vector(
+        &gc->collisionSystem, old_position, movement, playerRadius);
+
+    // Apply slide movement if it's significant
+    if (Vector3Length(slideMovement) > 0.01f) {
+      Vector3 newPos = Vector3Add(old_position, slideMovement);
+
+      // Check if slide movement is valid
+      if (collision_can_move_to_position(&gc->collisionSystem, old_position,
+                                         newPos, playerRadius)) {
+        gc->player.position = newPos;
+      } else {
+        // Revert to old position if sliding also fails
+        gc->player.position = old_position;
+      }
     } else {
-        gc->player.color = WHITE;
+      // Revert to old position
+      gc->player.position = old_position;
     }
+
+    TraceLog(LOG_INFO, "Player collision detected - movement blocked/adjusted");
+  }
+
+  // Update bounding box after position adjustment
+  gc->player.bbox = player_get_bbox(&gc->player);
+
+  // Check collision with enemies (keep existing logic)
+  bool enemyCollision = false;
+  for (int i = 0; i < gc->enemy_count; i++) {
+    if (gc->enemies[i].hp > 0) {
+      BoundingBox enemy_bbox = enemy_get_bbox(&gc->enemies[i]);
+      if (CheckCollisionBoxes(gc->player.bbox, enemy_bbox)) {
+        enemyCollision = true;
+        gc->enemies[i].hp -= 1.0f;
+        break;
+      }
+    }
+  }
+
+  if (enemyCollision) {
+    gc->player.color = RED;
+  } else {
+    gc->player.color = WHITE;
+  }
 }
 
 void player_update(game_context *gc) {
