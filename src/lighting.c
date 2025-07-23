@@ -21,23 +21,29 @@ void lighting_init(game_context *gc) {
   TraceLog(LOG_INFO, "viewPos location: %d",
            gc->lightingShader.locs[SHADER_LOC_VECTOR_VIEW]);
 
-  // Set softer ambient light for better texture visibility
+  // Very soft ambient light to preserve texture details
   int ambientLoc = GetShaderLocation(gc->lightingShader, "ambient");
   TraceLog(LOG_INFO, "ambient location: %d", ambientLoc);
   SetShaderValue(gc->lightingShader, ambientLoc,
-                 (float[4]){0.2f, 0.2f, 0.25f, 1.0f}, SHADER_UNIFORM_VEC4);
+                 (float[4]){0.15f, 0.15f, 0.18f, 1.0f}, SHADER_UNIFORM_VEC4); // Very low ambient
 
-  // Create softer, more natural lighting with reduced intensity
-  gc->lights[0] = CreateLight(LIGHT_POINT, (Vector3){-15, 12, -15}, Vector3Zero(),
-                              (Color){180, 185, 190, 255}, gc->lightingShader, 0);
-  gc->lights[1] = CreateLight(LIGHT_POINT, (Vector3){15, 12, 15}, Vector3Zero(),
-                              (Color){160, 170, 180, 255}, gc->lightingShader, 1);
-  gc->lights[2] =
-      CreateLight(LIGHT_DIRECTIONAL, (Vector3){0, 20, 0}, (Vector3){0, 0, 0},
-                  (Color){200, 210, 220, 255}, gc->lightingShader, 2);
+  // Gentle sun light - much reduced intensity
+  gc->lights[0] =
+      CreateLight(LIGHT_DIRECTIONAL, (Vector3){0, 50, 0}, (Vector3){0, -1, 0},
+                  (Color){180, 175, 170, 255}, gc->lightingShader, 0); // Soft warm light
+
+  // Subtle sky light - very gentle
+  gc->lights[1] =
+      CreateLight(LIGHT_DIRECTIONAL, (Vector3){-20, 30, -20}, (Vector3){1, -0.5f, 1},
+                  (Color){120, 130, 150, 255}, gc->lightingShader, 1); // Gentle cool light
+
+  // Minimal fill light to soften shadows without overpowering
+  gc->lights[2] = CreateLight(LIGHT_POINT, (Vector3){0, 25, 0}, Vector3Zero(),
+                              (Color){140, 140, 145, 255}, gc->lightingShader, 2); // Very soft fill
+
   gc->lightCount = 3;
 
-  TraceLog(LOG_INFO, "Lighting system initialized with %d lights",
+  TraceLog(LOG_INFO, "Soft texture-preserving lighting system initialized with %d lights",
            gc->lightCount);
 }
 

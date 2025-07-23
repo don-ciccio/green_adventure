@@ -191,9 +191,22 @@ static Vector3 Vector4Transform3(Vector4 v, Matrix m) {
 static void CalcFrustumCorners(Camera3D camera, Vector3 *corners) {
   Matrix view = GetCameraMatrix(camera);
   Matrix proj = MatrixIdentity();
-  proj = MatrixPerspective(camera.fovy * DEG2RAD,
-                           (double)GetScreenWidth() / (double)GetScreenHeight(),
-                           1.0f, 30.0f);
+  
+  // Use the correct projection matrix based on camera type
+  if (camera.projection == CAMERA_ORTHOGRAPHIC) {
+    // For orthographic projection, use the fovy as the orthographic size
+    float orthoSize = camera.fovy;
+    float aspect = (double)GetScreenWidth() / (double)GetScreenHeight();
+    proj = MatrixOrtho(-orthoSize * aspect, orthoSize * aspect, 
+                       -orthoSize, orthoSize, 
+                       0.1f, 120.0f); // Reduced from 200.0f to 120.0f for better performance
+  } else {
+    proj = MatrixPerspective(
+        camera.fovy * DEG2RAD,
+        (double)GetScreenWidth() / (double)GetScreenHeight(), 1.0f,
+        80.0f); // Keep perspective far plane at 80.0f
+  }
+  
   Matrix viewProj = MatrixMultiply(view, proj);
   viewProj = MatrixInvert(viewProj);
   corners[0] = Vector4Transform3((Vector4){-1, -1, -1, 1}, viewProj);
