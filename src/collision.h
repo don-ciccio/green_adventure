@@ -52,4 +52,9 @@ void collision_toggle_debug();
 // Check if collision debug is enabled
 bool collision_is_debug_enabled();
 
+// Custom bounds functions
+void collision_add_custom_bound(game_context *gc, Vector3 houseRelativePos, Vector3 size, Color color, const char* name);
+void collision_draw_custom_bounds(game_context *gc);
+void collision_draw_bounds_at_position(Vector3 position, Vector3 size, Color color);
+
 #endif // COLLISION_H

@@ -7,6 +7,7 @@
 #include "scene.h"
 #include <math.h>
 
+// In game_init function, after collision_init:
 void game_init(game_context *gc) {
   // Initialize game state
   gc->paused = false;
@@ -44,7 +45,7 @@ void game_init(game_context *gc) {
     TraceLog(LOG_ERROR, "Failed to load house.glb model!");
   }
 
-  // Initialize camera
+  // Initialize camera (now includes mode setup)
   camera_init(gc);
 
   // Initialize player
@@ -56,6 +57,17 @@ void game_init(game_context *gc) {
 
   // Initialize lighting system
   lighting_init(gc);
+
+  // Initialize custom bounds
+  // Initialize custom bounds count
+  gc->customBoundCount = 0;
+
+  // Remove the blue Door bound - commented out
+  // collision_add_custom_bound(gc, (Vector3){2.0f, 1.0f, 0.0f}, (Vector3){1.0f, 2.0f, 0.5f}, BLUE, "Door");
+  
+  // Add indoor trigger bounds
+  collision_add_custom_bound(gc, (Vector3){1.5f, 1.0f, -0.5f}, (Vector3){2.0f, 2.0f, 2.0f}, GREEN, "Porch");
+  collision_add_custom_bound(gc, (Vector3){-1.5f, 1.0f, -1.5f}, (Vector3){2.0f, 2.0f, 2.0f}, YELLOW, "Kitchen");
 }
 
 void game_handle_input(game_context *gc) {

@@ -310,3 +310,87 @@ Vector3 collision_get_slide_vector(CollisionSystem *collisionSystem,
 
   return movement; // No collision, return original movement
 }
+
+// Add these functions to collision.c
+void collision_add_custom_bound(game_context *gc, Vector3 houseRelativePos, Vector3 size, Color color, const char* name) {
+    if (gc->customBoundCount >= 16) return; // Max bounds reached
+    
+    CustomBound *bound = &gc->customBounds[gc->customBoundCount];
+    
+    // Convert house-relative position to world position
+    bound->position = (Vector3){
+        10.0f + houseRelativePos.x,
+        0.0f + houseRelativePos.y,
+        10.0f + houseRelativePos.z
+    };
+    
+    bound->size = size;
+    bound->color = color;
+    bound->enabled = true;
+    strncpy(bound->name, name, sizeof(bound->name) - 1);
+    bound->name[sizeof(bound->name) - 1] = '\0';
+    
+    gc->customBoundCount++;
+    
+    TraceLog(LOG_INFO, "Added custom bound '%s' at house position (%.2f, %.2f, %.2f)", 
+             name, houseRelativePos.x, houseRelativePos.y, houseRelativePos.z);
+}
+
+void collision_draw_bounds_at_position(Vector3 position, Vector3 size, Color color) {
+    // Draw filled cube with transparency
+    Color fillColor = color;
+    fillColor.a = 80; // Semi-transparent
+    DrawCube(position, size.x, size.y, size.z, fillColor);
+    
+    // Draw bright wireframe outline
+    DrawCubeWires(position, size.x, size.y, size.z, color);
+    
+    // Draw corner markers for better visibility
+    float markerSize = 0.1f;
+    Vector3 halfSize = {size.x/2, size.y/2, size.z/2};
+    
+    // Draw 8 corner markers
+    Vector3 corners[8] = {
+        {position.x - halfSize.x, position.y - halfSize.y, position.z - halfSize.z},
+        {position.x + halfSize.x, position.y - halfSize.y, position.z - halfSize.z},
+        {position.x - halfSize.x, position.y + halfSize.y, position.z - halfSize.z},
+        {position.x + halfSize.x, position.y + halfSize.y, position.z - halfSize.z},
+        {position.x - halfSize.x, position.y - halfSize.y, position.z + halfSize.z},
+        {position.x + halfSize.x, position.y - halfSize.y, position.z + halfSize.z},
+        {position.x - halfSize.x, position.y + halfSize.y, position.z + halfSize.z},
+        {position.x + halfSize.x, position.y + halfSize.y, position.z + halfSize.z}
+    };
+    
+    for (int i = 0; i < 8; i++) {
+        DrawCube(corners[i], markerSize, markerSize, markerSize, WHITE);
+    }
+}
+
+void collision_draw_custom_bounds(game_context *gc) {
+    for (int i = 0; i < gc->customBoundCount; i++) {
+        CustomBound *bound = &gc->customBounds[i];
+        if (bound->enabled) {
+            // Enhanced drawing with highlighting
+            collision_draw_bounds_at_position(bound->position, bound->size, bound->color);
+            
+            // Draw name label with background
+            Vector2 screenPos = GetWorldToScreen(bound->position, gc->camera);
+            if (screenPos.x >= 0 && screenPos.x < GetScreenWidth() && 
+                screenPos.y >= 0 && screenPos.y < GetScreenHeight()) {
+                
+                // Draw text background
+                int textWidth = MeasureText(bound->name, 16);
+                DrawRectangle((int)screenPos.x - 5, (int)screenPos.y - 25, textWidth + 10, 20, BLACK);
+                
+                // Draw text
+                DrawText(bound->name, (int)screenPos.x, (int)screenPos.y - 20, 16, bound->color);
+                
+                // Draw position info
+                char posText[64];
+                snprintf(posText, sizeof(posText), "(%.1f, %.1f, %.1f)", 
+                        bound->position.x - 10.0f, bound->position.y, bound->position.z - 10.0f);
+                DrawText(posText, (int)screenPos.x, (int)screenPos.y - 5, 12, LIGHTGRAY);
+            }
+        }
+    }
+}

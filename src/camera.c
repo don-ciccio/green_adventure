@@ -1,59 +1,120 @@
 #include "camera.h"
+#include <raylib.h>
+#include <raymath.h>
+#include <math.h>
 
 void camera_init(game_context *gc) {
-  // Set up orthographic camera positioned above and behind the player
-  gc->camera.position = (Vector3){10.0f, 15.0f, 20.0f}; // Closer to player
-  gc->camera.target = (Vector3){10.0f, 0.0f, 10.0f};    // Look at house center
-  gc->camera.up = (Vector3){0.0f, 1.0f, 0.0f};
-  gc->camera.fovy = 15.0f; // Smaller field of view for closer feel
-  gc->camera.projection = CAMERA_ORTHOGRAPHIC;
-
-  gc->camera_distance = 15.0f; // Reduced distance for closer following
-  gc->camera_angle = 0.0f;     // No rotation needed
+    // Initialize orthographic camera
+    gc->camera.position = (Vector3){15.0f, 20.0f, 15.0f};
+    gc->camera.target = (Vector3){0.0f, 0.0f, 0.0f};
+    gc->camera.up = (Vector3){0.0f, 1.0f, 0.0f};
+    gc->camera.fovy = 45.0f;
+    gc->camera.projection = CAMERA_ORTHOGRAPHIC;
+    
+    // Initialize camera mode settings
+    gc->cameraMode = GAME_CAMERA_MODE_ORTHOGRAPHIC;
+    gc->isIndoors = false;
+    gc->thirdPersonOffset = (Vector3){0.0f, 3.0f, 5.0f};
+    gc->transitionSpeed = 2.0f;
+    
+    gc->camera_distance = CAMERA_INITIAL_DISTANCE;
+    gc->camera_angle = 0.0f;
 }
 
 void camera_update(game_context *gc) {
-  // Reduced camera height and offset for closer following
-  float camera_height = 20.0f; // Lower camera height
-  float camera_offset = 8.0f;  // Closer distance behind player
-  float follow_speed =
-      0.1f; // Smooth interpolation factor (0.0 = no follow, 1.0 = instant)
+    // Check if player is in an indoor area
+    bool wasIndoors = gc->isIndoors;
+    gc->isIndoors = camera_is_indoor_position(gc, gc->player.position);
+    
+    // Switch camera mode if indoor status changed
+    if (gc->isIndoors && !wasIndoors) {
+        camera_set_mode(gc, GAME_CAMERA_MODE_THIRD_PERSON);
+        TraceLog(LOG_INFO, "Switched to third-person camera (indoors)");
+    } else if (!gc->isIndoors && wasIndoors) {
+        camera_set_mode(gc, GAME_CAMERA_MODE_ORTHOGRAPHIC);
+        TraceLog(LOG_INFO, "Switched to orthographic camera (outdoors)");
+    }
+    
+    // Update camera based on current mode
+    if (gc->cameraMode == GAME_CAMERA_MODE_ORTHOGRAPHIC) {
+        camera_update_orthographic(gc);
+    } else {
+        camera_update_third_person(gc);
+    }
+}
 
-  // Calculate target camera position
-  Vector3 target_position = (Vector3){
-      gc->player.position.x - camera_offset * 0.7071f, // 45-degree angle offset
-      gc->player.position.y + camera_height,
-      gc->player.position.z + camera_offset * 0.7071f};
+void camera_set_mode(game_context *gc, GameCameraMode mode) {
+    gc->cameraMode = mode;
+    
+    if (mode == GAME_CAMERA_MODE_ORTHOGRAPHIC) {
+        gc->camera.projection = CAMERA_ORTHOGRAPHIC;
+        gc->camera.fovy = gc->camera_distance; // Use distance as orthographic size
+    } else {
+        gc->camera.projection = CAMERA_PERSPECTIVE;
+        gc->camera.fovy = 45.0f;
+    }
+}
 
-  // Smoothly interpolate camera position towards target
-  gc->camera.position.x +=
-      (target_position.x - gc->camera.position.x) * follow_speed;
-  gc->camera.position.y +=
-      (target_position.y - gc->camera.position.y) * follow_speed;
-  gc->camera.position.z +=
-      (target_position.z - gc->camera.position.z) * follow_speed;
+void camera_update_orthographic(game_context *gc) {
+    // Handle zoom with mouse wheel
+    float wheel = GetMouseWheelMove();
+    if (wheel != 0) {
+        gc->camera_distance -= wheel * 2.0f;
+        gc->camera_distance = Clamp(gc->camera_distance, CAMERA_MIN_DISTANCE, CAMERA_MAX_DISTANCE);
+        gc->camera.fovy = gc->camera_distance;
+    }
+    
+    // Fixed orthographic camera position relative to player
+    Vector3 offset = {10.0f, 20.0f, 10.0f};
+    gc->camera.position = Vector3Add(gc->player.position, offset);
+    gc->camera.target = gc->player.position;
+}
 
-  // Smoothly interpolate camera target to follow player
-  gc->camera.target.x +=
-      (gc->player.position.x - gc->camera.target.x) * follow_speed;
-  gc->camera.target.y +=
-      (gc->player.position.y - gc->camera.target.y) * follow_speed;
-  gc->camera.target.z +=
-      (gc->player.position.z - gc->camera.target.z) * follow_speed;
+void camera_update_third_person(game_context *gc) {
+    // Handle zoom with mouse wheel for third-person
+    float wheel = GetMouseWheelMove();
+    if (wheel != 0) {
+        gc->thirdPersonOffset.z += wheel * 0.5f;
+        gc->thirdPersonOffset.z = Clamp(gc->thirdPersonOffset.z, 2.0f, 8.0f);
+    }
+    
+    // Third-person camera behind and above player
+    Vector3 targetPos = Vector3Add(gc->player.position, gc->thirdPersonOffset);
+    
+    // Smooth camera transition
+    float deltaTime = GetFrameTime();
+    gc->camera.position = Vector3Lerp(gc->camera.position, targetPos, gc->transitionSpeed * deltaTime);
+    gc->camera.target = Vector3Lerp(gc->camera.target, gc->player.position, gc->transitionSpeed * deltaTime);
+}
 
-  // Handle zoom with mouse wheel (changes orthographic size)
-  float wheel = GetMouseWheelMove();
-  gc->camera.fovy -= wheel * 1.5f; // Slightly reduced zoom sensitivity
-
-  // Clamp orthographic size with wider bounds to prevent too close zoom
-  if (gc->camera.fovy < 8.0f) {
-    gc->camera.fovy = 8.0f; // Increased minimum to prevent too close zoom
-  }
-  if (gc->camera.fovy > 25.0f) {
-    gc->camera.fovy = 25.0f;
-  }
+bool camera_is_indoor_position(game_context *gc, Vector3 position) {
+    // Check if player position is within any indoor custom bounds
+    for (int i = 0; i < gc->customBoundCount; i++) {
+        CustomBound *bound = &gc->customBounds[i];
+        if (!bound->enabled) continue;
+        
+        // Check if this is an indoor trigger (porch, kitchen, room, etc.)
+        if (strcmp(bound->name, "Porch") == 0 || 
+            strcmp(bound->name, "Kitchen") == 0 ||
+            strcmp(bound->name, "Room1") == 0 ||
+            strstr(bound->name, "Room") != NULL) {
+            
+            // Check if player is within this bound
+            Vector3 halfSize = {bound->size.x/2, bound->size.y/2, bound->size.z/2};
+            
+            if (position.x >= bound->position.x - halfSize.x &&
+                position.x <= bound->position.x + halfSize.x &&
+                position.y >= bound->position.y - halfSize.y &&
+                position.y <= bound->position.y + halfSize.y &&
+                position.z >= bound->position.z - halfSize.z &&
+                position.z <= bound->position.z + halfSize.z) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void camera_set_target(game_context *gc, Vector3 target) {
-  gc->camera.target = target;
+    gc->camera.target = target;
 }

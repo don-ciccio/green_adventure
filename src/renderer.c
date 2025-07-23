@@ -5,6 +5,8 @@
 #include "player.h"
 #include "scene.h"
 
+// In renderer_draw_game function:
+// In your UI drawing section, add:
 void renderer_draw_game(game_context *gc) {
   // Update camera position in shader
   float cameraPos[3] = {gc->camera.position.x, gc->camera.position.y,
@@ -38,7 +40,13 @@ void renderer_draw_game(game_context *gc) {
   enemies_draw(gc);
 
   // Debug: Draw collision bounding boxes
+  // Draw collision debug (includes custom bounds)
   collision_debug_draw(&gc->collisionSystem);
+  
+  // Draw custom bounds
+  if (collision_is_debug_enabled()) {
+      collision_draw_custom_bounds(gc);
+  }
 
   // Draw ground plane - REMOVED to make floor transparent
   // DrawPlane((Vector3){0, 0, 0}, (Vector2){50, 50}, WHITE);
@@ -82,4 +90,9 @@ void renderer_draw_game(game_context *gc) {
         TextFormat("Light %d: %s", i, gc->lights[i].enabled ? "ON" : "OFF"), 10,
         130 + i * 20, 16, statusColor);
   }
+  
+  // Draw camera mode indicator
+  const char* modeText = (gc->cameraMode == GAME_CAMERA_MODE_ORTHOGRAPHIC) ? "Orthographic" : "Third-Person";
+  DrawText(TextFormat("Camera: %s", modeText), 10, 10, 20, WHITE);
+  DrawText(TextFormat("Indoor: %s", gc->isIndoors ? "Yes" : "No"), 10, 35, 16, LIGHTGRAY);
 }

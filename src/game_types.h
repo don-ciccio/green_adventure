@@ -110,6 +110,22 @@ typedef struct Light {
 } Light;
 
 // Game context structure
+// Add to game_types.h
+typedef struct CustomBound {
+    Vector3 position;
+    Vector3 size;
+    Color color;
+    char name[32];
+    bool enabled;
+} CustomBound;
+
+// Add camera mode enum before game_context
+typedef enum {
+    GAME_CAMERA_MODE_ORTHOGRAPHIC,
+    GAME_CAMERA_MODE_THIRD_PERSON
+} GameCameraMode;
+
+// Add to game_context structure
 struct game_context {
   Camera camera;
   player_t player;
@@ -119,6 +135,12 @@ struct game_context {
   bool running;
   float camera_distance;
   float camera_angle;
+
+  // Camera mode switching
+  GameCameraMode cameraMode;
+  bool isIndoors;
+  Vector3 thirdPersonOffset;
+  float transitionSpeed;
 
   // Scene system
   SceneId sceneId;
@@ -136,6 +158,10 @@ struct game_context {
 
   // Collision system
   CollisionSystem collisionSystem;
+  
+  // Custom bounds for debugging/visualization
+  CustomBound customBounds[16];
+  int customBoundCount;
 };
 
 #endif // GAME_TYPES_H
