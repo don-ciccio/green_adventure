@@ -40,11 +40,8 @@ void renderer_draw_game(game_context *gc) {
   // Debug: Draw collision bounding boxes
   collision_debug_draw(&gc->collisionSystem);
 
-  // Draw ground plane
-  DrawPlane((Vector3){0, 0, 0}, (Vector2){50, 50}, WHITE);
-
-  // Draw grid on the floor
-  DrawGrid(60, 1.0f);
+  // Draw ground plane - REMOVED to make floor transparent
+  // DrawPlane((Vector3){0, 0, 0}, (Vector2){50, 50}, WHITE);
 
   // Draw light positions for debugging
   for (int i = 0; i < gc->lightCount; i++) {

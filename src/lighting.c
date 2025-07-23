@@ -21,20 +21,20 @@ void lighting_init(game_context *gc) {
   TraceLog(LOG_INFO, "viewPos location: %d",
            gc->lightingShader.locs[SHADER_LOC_VECTOR_VIEW]);
 
-  // Set pure golden ambient light (removed green tones)
+  // Set softer ambient light for better texture visibility
   int ambientLoc = GetShaderLocation(gc->lightingShader, "ambient");
   TraceLog(LOG_INFO, "ambient location: %d", ambientLoc);
   SetShaderValue(gc->lightingShader, ambientLoc,
-                 (float[4]){0.7f, 0.6f, 0.2f, 1.0f}, SHADER_UNIFORM_VEC4);
+                 (float[4]){0.2f, 0.2f, 0.25f, 1.0f}, SHADER_UNIFORM_VEC4);
 
-  // Create pure golden hour lighting (no green tones)
+  // Create softer, more natural lighting with reduced intensity
   gc->lights[0] = CreateLight(LIGHT_POINT, (Vector3){-15, 12, -15}, Vector3Zero(),
-                              (Color){255, 160, 60, 255}, gc->lightingShader, 0);
+                              (Color){180, 185, 190, 255}, gc->lightingShader, 0);
   gc->lights[1] = CreateLight(LIGHT_POINT, (Vector3){15, 12, 15}, Vector3Zero(),
-                              (Color){255, 190, 80, 255}, gc->lightingShader, 1);
+                              (Color){160, 170, 180, 255}, gc->lightingShader, 1);
   gc->lights[2] =
       CreateLight(LIGHT_DIRECTIONAL, (Vector3){0, 20, 0}, (Vector3){0, 0, 0},
-                  (Color){255, 210, 120, 255}, gc->lightingShader, 2);
+                  (Color){200, 210, 220, 255}, gc->lightingShader, 2);
   gc->lightCount = 3;
 
   TraceLog(LOG_INFO, "Lighting system initialized with %d lights",
